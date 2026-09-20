@@ -1,7 +1,7 @@
 <script>
   import { Check, Clock3, Pencil, X } from 'lucide-svelte';
-  import { items as mockItems } from '../mock-data.js';
-  import Button from './Button.svelte';
+  import { items as mockItems } from '../../lib/mock-data.js';
+  import Button from '../../lib/components/Button.svelte';
 
   export let requests = [];
   export let items = [];
@@ -111,21 +111,46 @@
           {#if request.status === 'pending_teacher'}
             {#if editingId === request.id}
               <form class="mt-4 space-y-4 rounded-xl border border-[#dce5dc] bg-[#fbfcfa] p-4" on:submit|preventDefault={() => saveEditing(request)}>
-                <div class="flex items-center justify-between gap-3"><p class="text-sm font-bold text-ink">แก้ไขคำขอ</p><button type="button" class="text-xs font-bold text-[#778078]" on:click={() => editingId = ''}>ยกเลิก</button></div>
-                <label>อาจารย์ผู้รับทราบ<select bind:value={editForm.teacher} required><option value="">เลือก อจ.</option>{#each teachers as teacher}<option value={teacher.id}>{teacher.name || teacher.email}</option>{/each}</select></label>
+                <div class="flex items-center justify-between gap-3">
+                  <p class="text-sm font-bold text-ink">แก้ไขคำขอ</p>
+                  <button type="button" class="text-xs font-bold text-[#778078]" on:click={() => editingId = ''}>ยกเลิก</button>
+                </div>
+                <label>อาจารย์ผู้รับทราบ
+                  <select bind:value={editForm.teacher} required>
+                    <option value="">เลือก อจ.</option>
+                    {#each teachers as teacher}
+                      <option value={teacher.id}>{teacher.name || teacher.email}</option>
+                    {/each}
+                  </select>
+                </label>
                 <label>วันที่ต้องการคืน<input type="date" bind:value={editForm.dueDate} required /></label>
-                <label>หมายเหตุ <span class="font-normal text-[#9aa19b]">(ไม่บังคับ)</span><textarea bind:value={editForm.note} rows="3"></textarea></label>
+                <label>หมายเหตุ <span class="font-normal text-[#9aa19b]">(ไม่บังคับ)</span>
+                  <textarea bind:value={editForm.note} rows="3"></textarea>
+                </label>
                 {#if editError}<p class="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{editError}</p>{/if}
-                <div class="flex gap-2"><Button size="sm" disabled={saving || !editForm.teacher || !editForm.dueDate}>{saving ? 'กำลังบันทึก...' : 'บันทึกการแก้ไข'}</Button></div>
+                <div class="flex gap-2">
+                  <Button size="sm" disabled={saving || !editForm.teacher || !editForm.dueDate}>
+                    {saving ? 'กำลังบันทึก...' : 'บันทึกการแก้ไข'}
+                  </Button>
+                </div>
               </form>
             {:else}
-              <button type="button" class="mt-4 inline-flex items-center gap-2 rounded-lg border border-[#c9d2c8] px-3 py-2 text-xs font-bold text-sage hover:bg-[#edf2ed]" on:click={() => startEditing(request)}><Pencil size={14}/>แก้ไขคำขอ</button>
+              <button type="button" class="mt-4 inline-flex items-center gap-2 rounded-lg border border-[#c9d2c8] px-3 py-2 text-xs font-bold text-sage hover:bg-[#edf2ed]" on:click={() => startEditing(request)}>
+                <Pencil size={14}/>แก้ไขคำขอ
+              </button>
               <p class="mt-2 text-xs text-[#89938b]">แก้ไขได้จนกว่า อจ. จะรับทราบ</p>
             {/if}
           {/if}
 
           {#if request.status === 'rejected'}
-            <div class="mt-5 rounded-xl bg-[#fff1ef] p-4 text-sm font-semibold text-[#a34e43]"><div class="flex items-center gap-3"><X size={18}/> {request.teacherComment ? 'อาจารย์ไม่อนุมัติคำขอนี้' : request.adminComment ? 'ผู้ดูแลไม่อนุมัติคำขอนี้' : 'คำขอนี้ไม่ผ่านการอนุมัติ'}</div>{#if request.teacherComment || request.adminComment}<p class="mt-2 pl-7 text-xs font-normal">เหตุผล: {request.teacherComment || request.adminComment}</p>{/if}</div>
+            <div class="mt-5 rounded-xl bg-[#fff1ef] p-4 text-sm font-semibold text-[#a34e43]">
+              <div class="flex items-center gap-3">
+                <X size={18}/> {request.teacherComment ? 'อาจารย์ไม่อนุมัติคำขอนี้' : request.adminComment ? 'ผู้ดูแลไม่อนุมัติคำขอนี้' : 'คำขอนี้ไม่ผ่านการอนุมัติ'}
+              </div>
+              {#if request.teacherComment || request.adminComment}
+                <p class="mt-2 pl-7 text-xs font-normal">เหตุผล: {request.teacherComment || request.adminComment}</p>
+              {/if}
+            </div>
           {:else}
             <div class="mt-6 grid gap-3 md:grid-cols-3">
               {#each steps as step, index}
@@ -133,7 +158,10 @@
                   <div class="grid h-8 w-8 shrink-0 place-items-center rounded-full {index <= currentStep ? 'bg-sage text-white' : 'bg-[#e8ece7] text-[#89938b]'}">
                     {#if index < currentStep}<Check size={16}/>{:else}{index + 1}{/if}
                   </div>
-                  <div><p class="text-sm font-bold {index <= currentStep ? 'text-ink' : 'text-[#9aa19b]'}">{step.label}</p><p class="mt-1 text-xs text-[#89938b]">{index < currentStep ? 'เสร็จแล้ว' : index === currentStep ? 'กำลังดำเนินการ' : 'รอดำเนินการ'}</p></div>
+                  <div>
+                    <p class="text-sm font-bold {index <= currentStep ? 'text-ink' : 'text-[#9aa19b]'}">{step.label}</p>
+                    <p class="mt-1 text-xs text-[#89938b]">{index < currentStep ? 'เสร็จแล้ว' : index === currentStep ? 'กำลังดำเนินการ' : 'รอดำเนินการ'}</p>
+                  </div>
                 </div>
               {/each}
             </div>
