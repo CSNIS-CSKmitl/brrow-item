@@ -83,10 +83,12 @@ export async function getMyLoanRequests() {
   });
 }
 
-export async function updateLoanStatus(id, status) {
+export async function updateLoanStatus(id, status, teacherComment = '') {
   const user = pb.authStore.record?.id;
   const data = { status };
-  // อาจารย์ปฏิเสธได้ในขั้นรับทราบ โดยไม่ต้องถูกบันทึกว่าเป็นผู้ดูแล
+  // ทั้งอาจารย์และผู้ดูแลต้องบอกเหตุผลเมื่อปฏิเสธ แต่มีผู้บันทึกคนละฟิลด์
+  if (status === 'rejected' && getUserType() === 'teachers') data.teacherComment = teacherComment.trim();
+  if (isSuperadmin() && status === 'rejected') data.adminComment = teacherComment.trim();
   if ((status === 'approved' || status === 'rejected') && isSuperadmin()) data.caretaker = user;
   return pb.collection('loan_requests').update(id, data, { expand: 'requester,teacher,caretaker' });
 }

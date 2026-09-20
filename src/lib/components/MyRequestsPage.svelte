@@ -44,6 +44,12 @@
     return teacher?.name || teacher?.email || teachers.find((entry) => entry.id === request.teacher)?.name || 'ไม่ระบุอาจารย์';
   }
 
+  function statusLabel(request) {
+    if (request.status === 'rejected' && request.teacherComment) return 'อาจารย์ไม่อนุมัติ';
+    if (request.status === 'rejected' && request.adminComment) return 'ผู้ดูแลไม่อนุมัติ';
+    return labels[request.status] || request.status;
+  }
+
   function startEditing(request) {
     editingId = request.id;
     editError = '';
@@ -87,7 +93,7 @@
               <h2 class="mt-1 text-lg font-bold text-ink">ของที่ขอยืม</h2>
             </div>
             <span class="rounded-full px-3 py-1.5 text-xs font-bold {request.status === 'rejected' ? 'bg-[#fff1ef] text-[#a34e43]' : 'bg-[#eef2ed] text-sage'}">
-              {labels[request.status] || request.status}
+              {statusLabel(request)}
             </span>
           </div>
 
@@ -119,7 +125,7 @@
           {/if}
 
           {#if request.status === 'rejected'}
-            <div class="mt-5 flex items-center gap-3 rounded-xl bg-[#fff1ef] p-4 text-sm font-semibold text-[#a34e43]"><X size={18}/> คำขอนี้ไม่ผ่านการอนุมัติ</div>
+            <div class="mt-5 rounded-xl bg-[#fff1ef] p-4 text-sm font-semibold text-[#a34e43]"><div class="flex items-center gap-3"><X size={18}/> {request.teacherComment ? 'อาจารย์ไม่อนุมัติคำขอนี้' : request.adminComment ? 'ผู้ดูแลไม่อนุมัติคำขอนี้' : 'คำขอนี้ไม่ผ่านการอนุมัติ'}</div>{#if request.teacherComment || request.adminComment}<p class="mt-2 pl-7 text-xs font-normal">เหตุผล: {request.teacherComment || request.adminComment}</p>{/if}</div>
           {:else}
             <div class="mt-6 grid gap-3 md:grid-cols-3">
               {#each steps as step, index}
