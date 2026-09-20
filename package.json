@@ -1,0 +1,21 @@
+{
+  "name": "borrowly",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@sveltejs/vite-plugin-svelte": "latest",
+    "autoprefixer": "latest",
+    "lucide-svelte": "latest",
+    "pocketbase": "latest",
+    "postcss": "latest",
+    "svelte": "latest",
+    "tailwindcss": "^3.4.17",
+    "vite": "latest"
+  }
+}
