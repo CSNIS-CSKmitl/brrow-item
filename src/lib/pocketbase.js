@@ -1,7 +1,12 @@
 import PocketBase from 'pocketbase';
 
-// ตั้งค่า VITE_POCKETBASE_URL ในไฟล์ .env เมื่อต้องการใช้ฐานข้อมูลจริง
-export const pb = new PocketBase(import.meta.env.VITE_POCKETBASE_URL || 'http://127.0.0.1:8090');
+// ตั้งค่า PocketBase client
+// หากเปิดใช้ Proxy หรือใช้ Relative path จะส่ง request ผ่าน Vite Proxy ('/')
+const rawUrl = import.meta.env.VITE_POCKETBASE_URL;
+const useDirectUrl = import.meta.env.VITE_USE_PROXY === 'false' && rawUrl && (rawUrl.startsWith('http://') || rawUrl.startsWith('https://'));
+const pbUrl = useDirectUrl ? rawUrl : '/';
+
+export const pb = new PocketBase(pbUrl);
 
 export async function login(email, password) {
   const authData = await pb.collection('users').authWithPassword(email, password);
@@ -39,7 +44,7 @@ export function getUserType(record = pb.authStore.record) {
 }
 
 export async function getItems() {
-  if (!import.meta.env.VITE_POCKETBASE_URL) return [];
+  if (!import.meta.env.VITE_POCKETBASE_URL && !import.meta.env.VITE_POCKETBASE_TARGET) return [];
   return pb.collection('items').getFullList({ sort: '-created', requestKey: null });
 }
 
