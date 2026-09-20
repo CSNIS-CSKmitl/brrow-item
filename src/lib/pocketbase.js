@@ -29,8 +29,9 @@ export function logout() {
 }
 
 export function isSuperadmin(record = pb.authStore.record) {
-  const userType = record?.expand?.user_type?.type || record?.user_type;
-  return userType === 'superadmin' || userType === '000000000000009';
+  // อย่าผูกกับ id ของ relation เพราะ id แต่ละ PocketBase ไม่เหมือนกัน
+  // และอาจทำให้ role อื่นถูกตีความเป็นผู้ดูแลโดยผิดพลาด
+  return getUserType(record) === 'superadmin';
 }
 
 export function getUserType(record = pb.authStore.record) {
@@ -46,7 +47,7 @@ export async function createLoanRequest({ itemIds, borrowerName, email, dueDate,
   const currentUser = pb.authStore.record;
   const requesterIsTeacher = getUserType(currentUser) === 'teachers';
   const requesterIsSuperadmin = isSuperadmin(currentUser);
-  return pb.collection('loan_requests').create({
+  const request = {
     itemIds,
     borrowerName: currentUser?.name || borrowerName || currentUser?.email,
     email: currentUser?.email || email,
@@ -55,9 +56,10 @@ export async function createLoanRequest({ itemIds, borrowerName, email, dueDate,
     requester: currentUser?.id,
     // ผู้ดูแลยืมได้ทันที แต่ยังเก็บรายการไว้เป็นประวัติที่ตรวจสอบได้
     teacher: requesterIsTeacher || requesterIsSuperadmin ? currentUser?.id : teacher,
-    caretaker: requesterIsSuperadmin ? currentUser?.id : '',
     status: requesterIsSuperadmin ? 'approved' : requesterIsTeacher ? 'pending_caretaker' : 'pending_teacher'
-  });
+  };
+  if (requesterIsSuperadmin) request.caretaker = currentUser?.id;
+  return pb.collection('loan_requests').create(request);
 }
 
 export async function getTeachers() {

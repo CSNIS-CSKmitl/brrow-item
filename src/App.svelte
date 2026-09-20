@@ -1,4 +1,5 @@
 <script>
+  import { onDestroy } from 'svelte';
   import { ArrowRight, CheckCircle2, Search, SlidersHorizontal, Sparkles, UsersRound } from 'lucide-svelte';
   import Header from './lib/components/Header.svelte';
   import ItemCard from './lib/components/ItemCard.svelte';
@@ -29,6 +30,7 @@
   let myRequests = [];
   let teachers = [];
   let loginError = '';
+  let unsubscribeLoanRequests = null;
 
   async function loadItems() {
     try {
@@ -50,7 +52,7 @@
       if (userType === 'teachers') {
         const pendingRequests = await getLoanRequests('pending_teacher');
         requests = pendingRequests.filter((request) => request.teacher === user?.id);
-      } else if (userType === 'superadmin') requests = await getLoanRequests('pending_caretaker');
+      } else if (userType === 'superadmin') requests = await getLoanRequests();
       else requests = [];
     } catch (error) {
       requests = [];
@@ -59,13 +61,33 @@
   }
   async function loadMyRequests() { myRequests = await getMyLoanRequests().catch(() => []); }
   function loadTeachers() { getTeachers().then((result) => { teachers = result; }).catch(() => {}); }
+  async function stopRealtime() {
+    if (!unsubscribeLoanRequests) return;
+    const unsubscribe = unsubscribeLoanRequests;
+    unsubscribeLoanRequests = null;
+    await unsubscribe();
+  }
+  async function startRealtime() {
+    await stopRealtime();
+    if (!pb.authStore.isValid) return;
+    try {
+      unsubscribeLoanRequests = await pb.collection('loan_requests').subscribe('*', () => {
+        void loadRequests();
+        void loadMyRequests();
+      });
+    } catch (error) {
+      console.error('PocketBase realtime connection failed', error);
+    }
+  }
   loadTeachers();
   loadRequests();
   loadMyRequests();
-  pb.authStore.onChange(() => { user = pb.authStore.record; canAdmin = isSuperadmin(user); userType = getUserType(user); loadRequests(); loadMyRequests(); loadTeachers(); });
+  void startRealtime();
+  const unsubscribeAuth = pb.authStore.onChange(() => { user = pb.authStore.record; canAdmin = isSuperadmin(user); userType = getUserType(user); loadItems(); loadRequests(); loadMyRequests(); loadTeachers(); void startRealtime(); });
+  onDestroy(() => { unsubscribeAuth(); void stopRealtime(); });
   async function handleLogin(email, password) { loginError = ''; try { await login(email, password); window.location.href = '/'; } catch (error) { loginError = 'อีเมลหรือรหัสผ่านไม่ถูกต้อง'; } }
   async function handleOIDCLogin() { loginError = ''; try { await loginWithOIDC(); window.location.href = '/'; } catch (error) { loginError = error.message || 'ไม่สามารถเข้าสู่ระบบด้วย OIDC ได้'; } }
-  function handleLogout() { logout(); window.location.href = '/login'; }
+  function handleLogout() { void stopRealtime(); logout(); window.location.href = '/login'; }
   async function handleAddItem(data) { const created = await createItem(data); items = [created, ...items]; }
   async function handleDeleteItem(item) { if (!confirm(`ลบ ${item.name} ใช่ไหม?`)) return false; await deleteItem(item.id); items = items.filter((entry) => entry.id !== item.id); return true; }
   async function handleLoanAction(request, status) {
@@ -119,7 +141,6 @@
 {#if submitted}<div class="toast"><CheckCircle2 size={21}/><div><b>ส่งคำขอเรียบร้อยแล้ว</b><p>เจ้าของจะติดต่อกลับเพื่อยืนยันการยืม</p></div><button on:click={resetSubmitted}>×</button></div>{/if}
 {#if submitError}<div class="toast error"><div><b>ส่งคำขอไม่สำเร็จ</b><p>{submitError}</p></div><button on:click={() => submitError = ''}>×</button></div>{/if}
 {#if workflowError}<div class="toast error"><div><b>อัปเดตสถานะไม่สำเร็จ</b><p>{workflowError}</p></div><button on:click={() => workflowError = ''}>×</button></div>{/if}
-<LoanPanel selectedItems={selectedItems} teachers={teachers} skipTeacherApproval={userType === 'teachers'} borrowerName={user?.name || user?.email || ''} borrowerEmail={user?.email || ''} bind:open={panelOpen} onClose={() => panelOpen = false} onSubmit={submitLoan} />
 <footer class="border-t border-[#e7e5df] bg-cream px-5 py-8 text-center text-sm text-[#879087]">© 2025 borrowly · แบ่งปันของดี ให้ชุมชนน่าอยู่ขึ้น</footer>
 {:else if path === '/catalog'}
 <main class="mx-auto max-w-7xl px-5 py-16 lg:px-8"><div class="mb-10"><p class="eyebrow">EXPLORE THE LIBRARY</p><h1 class="mt-2 text-4xl font-bold text-ink">แคตตาล็อกของทั้งหมด</h1><p class="mt-3 text-[#7c857e]">ค้นหาและเลือกของที่ต้องการยืมจากชุมชน</p></div>{#if items.length === 0}<div class="rounded-2xl border border-dashed border-[#d8d8d0] py-16 text-center text-[#7c857e]">ยังไม่มีของให้ยืมในระบบ</div>{:else}<div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{#each items as item}<ItemCard {item} selected={selectedItems.some((selected) => selected.id === item.id)} onSelect={toggleItem} onOpen={() => detailItem = item} />{/each}</div>{/if}</main>
@@ -130,4 +151,7 @@
 {:else}
 <main class="mx-auto max-w-3xl px-5 py-24 text-center"><h1 class="text-4xl font-bold text-ink">ไม่พบหน้านี้</h1><p class="mt-4 text-[#7c857e]">ลองกลับไปที่หน้าแรกหรือแคตตาล็อก</p><a class="btn primary mx-auto mt-8 max-w-xs px-5 py-3 text-sm" href="/">กลับหน้าแรก</a></main>
 {/if}
+{/if}
+{#if user && path !== '/login'}
+<LoanPanel selectedItems={selectedItems} teachers={teachers} skipTeacherApproval={userType === 'teachers' || canAdmin} autoApprove={canAdmin} borrowerName={user?.name || user?.email || ''} borrowerEmail={user?.email || ''} bind:open={panelOpen} onClose={() => panelOpen = false} onSubmit={submitLoan} />
 {/if}
