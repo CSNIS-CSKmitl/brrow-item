@@ -45,6 +45,7 @@ export async function getItems() {
 export async function createLoanRequest({ itemIds, borrowerName, email, dueDate, note, teacher }) {
   const currentUser = pb.authStore.record;
   const requesterIsTeacher = getUserType(currentUser) === 'teachers';
+  const requesterIsSuperadmin = isSuperadmin(currentUser);
   return pb.collection('loan_requests').create({
     itemIds,
     borrowerName: currentUser?.name || borrowerName || currentUser?.email,
@@ -52,8 +53,10 @@ export async function createLoanRequest({ itemIds, borrowerName, email, dueDate,
     dueDate,
     note,
     requester: currentUser?.id,
-    teacher: requesterIsTeacher ? currentUser?.id : teacher,
-    status: requesterIsTeacher ? 'pending_caretaker' : 'pending_teacher'
+    // ผู้ดูแลยืมได้ทันที แต่ยังเก็บรายการไว้เป็นประวัติที่ตรวจสอบได้
+    teacher: requesterIsTeacher || requesterIsSuperadmin ? currentUser?.id : teacher,
+    caretaker: requesterIsSuperadmin ? currentUser?.id : '',
+    status: requesterIsSuperadmin ? 'approved' : requesterIsTeacher ? 'pending_caretaker' : 'pending_teacher'
   });
 }
 
