@@ -86,7 +86,8 @@ export async function getMyLoanRequests() {
 export async function updateLoanStatus(id, status) {
   const user = pb.authStore.record?.id;
   const data = { status };
-  if (status === 'approved' || status === 'rejected') data.caretaker = user;
+  // อาจารย์ปฏิเสธได้ในขั้นรับทราบ โดยไม่ต้องถูกบันทึกว่าเป็นผู้ดูแล
+  if ((status === 'approved' || status === 'rejected') && isSuperadmin()) data.caretaker = user;
   return pb.collection('loan_requests').update(id, data, { expand: 'requester,teacher,caretaker' });
 }
 
