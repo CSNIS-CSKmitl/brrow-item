@@ -53,8 +53,7 @@
   <LoanPanel
     selectedItems={$selectedItems}
     teachers={$teachers}
-    skipTeacherApproval={$userType === "teachers" || $canAdmin}
-    autoApprove={$canAdmin}
+    isTeacher={$userType === "teachers"}
     borrowerName={$user?.name || $user?.email || ""}
     borrowerEmail={$user?.email || ""}
     bind:open={$panelOpen}

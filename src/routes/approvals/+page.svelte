@@ -3,9 +3,10 @@
   import { Check, Clock3, Download, Filter, History, ListFilter, X } from 'lucide-svelte';
   import Button from '../../lib/components/Button.svelte';
   import { items as mockItems } from '../../lib/mock-data.js';
-  import { items, user, userType, canAdmin } from '../../lib/stores.js';
+  import { items, user, userType, canAdmin, teachers } from '../../lib/stores.js';
   import { getLoanRequests, updateLoanStatus, pb } from '../../lib/pocketbase.js';
   import { exportRequestsToCSV, exportSingleRequestToCSV, formatDateTime } from '../../lib/csv.js';
+  import { getStatusBadgeClass, getStatusDotClass } from '../../lib/status.js';
 
   const labels = {
     pending_teacher: 'รอ อจ. รับทราบ',
@@ -62,16 +63,22 @@
     $userType === 'teachers' ? r.status === 'pending_teacher' : r.status === 'pending_caretaker'
   );
 
+  $: pendingTeacherRequests = requests.filter((r) => r.status === 'pending_teacher');
+
   $: historyRequests = requests.filter((r) =>
-    $userType === 'teachers' ? r.status !== 'pending_teacher' : r.status !== 'pending_caretaker'
+    $userType === 'teachers'
+      ? r.status !== 'pending_teacher'
+      : r.status === 'approved' || r.status === 'rejected'
   );
 
   $: filteredRequests =
     activeTab === 'pending'
       ? pendingRequests
-      : activeTab === 'history'
-        ? historyRequests
-        : requests;
+      : activeTab === 'pending_teacher'
+        ? pendingTeacherRequests
+        : activeTab === 'history'
+          ? historyRequests
+          : requests;
 
   function itemName(id) {
     return $items.find((item) => item.id === id)?.name || mockItems.find((item) => item.id === id)?.name || id;
@@ -85,6 +92,24 @@
     if (request.status === 'rejected' && request.teacherComment) return 'อาจารย์ไม่อนุมัติ';
     if (request.status === 'rejected' && request.adminComment) return 'ผู้ดูแลไม่อนุมัติ';
     return labels[request.status] || request.status;
+  }
+
+  function teacherName(request) {
+    const t = request.expand?.teacher;
+    if (t?.name) return t.name;
+    if (t?.email) return t.email;
+    const found = $teachers.find((entry) => entry.id === request.teacher);
+    if (found?.name) return found.name;
+    if (found?.email) return found.email;
+    return request.teacher || 'ไม่ระบุอาจารย์';
+  }
+
+  function teacherDisplay(request) {
+    const isTeacherSelf = request.teacher && request.requester && request.teacher === request.requester;
+    return {
+      label: isTeacherSelf ? 'อาจารย์ผู้ขอยืม' : 'อาจารย์ผู้รับทราบ / ขออนุมัติ',
+      name: teacherName(request),
+    };
   }
 
   // Reject flow
@@ -186,14 +211,27 @@
   <div class="mb-6 flex flex-wrap items-center gap-2 border-b border-[#e4e5de] pb-3">
     <button
       type="button"
-      class="rounded-xl px-4 py-2 text-sm font-bold transition {activeTab === 'pending' ? 'bg-sage text-white shadow-sm' : 'bg-white text-[#6b756d] hover:bg-[#f2f5f1]'}"
+      class="rounded-xl px-4 py-2 text-sm font-bold transition {activeTab === 'pending' ? ($userType === 'teachers' ? 'bg-amber-600 text-white shadow-sm' : 'bg-blue-600 text-white shadow-sm') : 'bg-white text-[#6b756d] hover:bg-[#f2f5f1]'}"
       on:click={() => (activeTab = 'pending')}
     >
       {$userType === 'teachers' ? 'รอ อจ. รับทราบ' : 'รอผู้ดูแลอนุมัติ'}
-      <span class="ml-1.5 rounded-full px-2 py-0.5 text-xs {activeTab === 'pending' ? 'bg-white/20 text-white' : 'bg-[#eef2ed] text-[#717b73]'}">
+      <span class="ml-1.5 rounded-full px-2 py-0.5 text-xs {activeTab === 'pending' ? 'bg-white/25 text-white' : 'bg-[#eef2ed] text-[#717b73]'}">
         {pendingRequests.length}
       </span>
     </button>
+
+    {#if $userType !== 'teachers'}
+      <button
+        type="button"
+        class="rounded-xl px-4 py-2 text-sm font-bold transition {activeTab === 'pending_teacher' ? 'bg-amber-600 text-white shadow-sm' : 'bg-white text-[#6b756d] hover:bg-[#f2f5f1]'}"
+        on:click={() => (activeTab = 'pending_teacher')}
+      >
+        รอ อจ. รับทราบ
+        <span class="ml-1.5 rounded-full px-2 py-0.5 text-xs {activeTab === 'pending_teacher' ? 'bg-white/25 text-white' : 'bg-[#eef2ed] text-[#717b73]'}">
+          {pendingTeacherRequests.length}
+        </span>
+      </button>
+    {/if}
 
     <button
       type="button"
@@ -202,18 +240,18 @@
     >
       <History size={14} class="inline -mt-0.5 mr-1" />
       ประวัติการพิจารณา
-      <span class="ml-1.5 rounded-full px-2 py-0.5 text-xs {activeTab === 'history' ? 'bg-white/20 text-white' : 'bg-[#eef2ed] text-[#717b73]'}">
+      <span class="ml-1.5 rounded-full px-2 py-0.5 text-xs {activeTab === 'history' ? 'bg-white/25 text-white' : 'bg-[#eef2ed] text-[#717b73]'}">
         {historyRequests.length}
       </span>
     </button>
 
     <button
       type="button"
-      class="rounded-xl px-4 py-2 text-sm font-bold transition {activeTab === 'all' ? 'bg-sage text-white shadow-sm' : 'bg-white text-[#6b756d] hover:bg-[#f2f5f1]'}"
+      class="rounded-xl px-4 py-2 text-sm font-bold transition {activeTab === 'all' ? 'bg-[#3b453e] text-white shadow-sm' : 'bg-white text-[#6b756d] hover:bg-[#f2f5f1]'}"
       on:click={() => (activeTab = 'all')}
     >
       ทั้งหมด
-      <span class="ml-1.5 rounded-full px-2 py-0.5 text-xs {activeTab === 'all' ? 'bg-white/20 text-white' : 'bg-[#eef2ed] text-[#717b73]'}">
+      <span class="ml-1.5 rounded-full px-2 py-0.5 text-xs {activeTab === 'all' ? 'bg-white/25 text-white' : 'bg-[#eef2ed] text-[#717b73]'}">
         {requests.length}
       </span>
     </button>
@@ -240,7 +278,8 @@
             <div class="flex flex-wrap items-center justify-between gap-2">
               <div class="flex flex-wrap items-center gap-2">
                 <h2 class="font-bold text-ink">คำขอของ {request.borrowerName}</h2>
-                <span class="rounded-full px-3 py-1 text-xs font-bold {request.status === 'rejected' ? 'bg-[#fff1ef] text-[#a34e43]' : request.status === 'approved' ? 'bg-[#e8f5e9] text-[#2e7d32]' : 'bg-[#eef2ed] text-sage'}">
+                <span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold {getStatusBadgeClass(request.status)}">
+                  <span class="h-1.5 w-1.5 rounded-full {getStatusDotClass(request.status)}"></span>
                   {statusLabel(request)}
                 </span>
               </div>
@@ -262,8 +301,14 @@
             <p class="text-sm text-[#778078]">
               กำหนดเวลาคืน: <b class="text-ink">{formatDate(request.dueDate)}</b> · อีเมล: {request.email}
             </p>
+            <p class="text-sm text-[#778078] flex flex-wrap items-center gap-1.5">
+              <span>{teacherDisplay(request).label}:</span>
+              <span class="inline-flex items-center rounded-md bg-[#eef4ee] px-2.5 py-0.5 text-xs font-bold text-[#2d5236] border border-[#d3e3d4]">
+                {teacherDisplay(request).name}
+              </span>
+            </p>
             <p class="text-xs text-[#9aa29b]">
-              ส่งคำขอเมื่อ: {formatDate(request.created)} · อจ. ผู้รับทราบ: {request.expand?.teacher?.name || request.expand?.teacher?.email || '-'}
+              ส่งคำขอเมื่อ: {formatDate(request.created)}
             </p>
 
             {#if request.note}
@@ -301,6 +346,14 @@
               <Button size="sm" on:click={() => handleTeacherApprove(request)}>
                 <Check size={15} /> รับทราบ
               </Button>
+            </div>
+          {/if}
+
+          <!-- Notice for Admin when status is still pending_teacher -->
+          {#if ($userType === 'superadmin' || $canAdmin) && request.status === 'pending_teacher'}
+            <div class="self-start rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2 text-xs font-semibold text-amber-900 shadow-2xs">
+              <span class="font-bold">⏳ รออาจารย์รับทราบก่อน</span>
+              <p class="mt-0.5 text-[11px] text-amber-700">คำขอนี้ยังต้องรอให้อาจารย์กดรับทราบก่อน ผู้ดูแลจึงจะสามารถอนุมัติได้</p>
             </div>
           {/if}
 

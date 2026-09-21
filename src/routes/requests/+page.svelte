@@ -6,6 +6,7 @@
   import { items, teachers, userType } from '../../lib/stores.js';
   import { getMyLoanRequests, updateMyLoanRequest, pb } from '../../lib/pocketbase.js';
   import { exportSingleRequestToCSV, formatDateTime } from '../../lib/csv.js';
+  import { getStatusBadgeClass, getStatusDotClass } from '../../lib/status.js';
 
   let requests = [];
   let editingId = '';
@@ -134,7 +135,8 @@
                   <Download size={13} class="text-sage" /> Export CSV
                 </button>
               {/if}
-              <span class="rounded-full px-3 py-1.5 text-xs font-bold {request.status === 'rejected' ? 'bg-[#fff1ef] text-[#a34e43]' : 'bg-[#eef2ed] text-sage'}">
+              <span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold {getStatusBadgeClass(request.status)}">
+                <span class="h-1.5 w-1.5 rounded-full {getStatusDotClass(request.status)}"></span>
                 {statusLabel(request)}
               </span>
             </div>
@@ -210,7 +212,7 @@
             <div class="mt-6 grid gap-3 md:grid-cols-3">
               {#each steps as step, index}
                 <div class="flex items-start gap-3">
-                  <div class="grid h-8 w-8 shrink-0 place-items-center rounded-full {index <= currentStep ? 'bg-sage text-white' : 'bg-[#e8ece7] text-[#89938b]'}">
+                  <div class="grid h-8 w-8 shrink-0 place-items-center rounded-full font-bold text-xs {index < currentStep ? 'bg-emerald-600 text-white shadow-xs' : index === currentStep ? (currentStep === 0 ? 'bg-amber-500 text-white shadow-xs ring-4 ring-amber-100' : currentStep === 1 ? 'bg-blue-600 text-white shadow-xs ring-4 ring-blue-100' : 'bg-emerald-600 text-white shadow-xs ring-4 ring-emerald-100') : 'bg-[#e8ece7] text-[#89938b]'}">
                     {#if index < currentStep}<Check size={16}/>{:else}{index + 1}{/if}
                   </div>
                   <div>

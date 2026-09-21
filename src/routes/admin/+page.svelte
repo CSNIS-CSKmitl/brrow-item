@@ -3,9 +3,10 @@
   import { Trash2, Plus, PackageOpen, Check, X, Download, Clock3, Package, FileSpreadsheet } from 'lucide-svelte';
   import Button from '../../lib/components/Button.svelte';
   import { items as mockItems } from '../../lib/mock-data.js';
-  import { items, user } from '../../lib/stores.js';
+  import { items, user, teachers } from '../../lib/stores.js';
   import { createItem, deleteItem, getLoanRequests, updateLoanStatus, pb } from '../../lib/pocketbase.js';
   import { exportRequestsToCSV, exportSingleRequestToCSV, exportItemsToCSV, formatDateTime } from '../../lib/csv.js';
+  import { getStatusBadgeClass, getStatusDotClass } from '../../lib/status.js';
 
   // Main Tab: 'requests' | 'items'
   let activeMainTab = 'requests';
@@ -54,6 +55,7 @@
     if (unsubRequests) unsubRequests();
   });
 
+  $: pendingTeacherRequests = requests.filter((r) => r.status === 'pending_teacher');
   $: pendingRequests = requests.filter((r) => r.status === 'pending_caretaker');
   $: approvedRequests = requests.filter((r) => r.status === 'approved');
   $: rejectedRequests = requests.filter((r) => r.status === 'rejected');
@@ -61,11 +63,13 @@
   $: filteredRequests =
     requestFilter === 'pending'
       ? pendingRequests
-      : requestFilter === 'approved'
-        ? approvedRequests
-        : requestFilter === 'rejected'
-          ? rejectedRequests
-          : requests;
+      : requestFilter === 'pending_teacher'
+        ? pendingTeacherRequests
+        : requestFilter === 'approved'
+          ? approvedRequests
+          : requestFilter === 'rejected'
+            ? rejectedRequests
+            : requests;
 
   function itemName(id) {
     return $items.find((item) => item.id === id)?.name || mockItems.find((item) => item.id === id)?.name || id;
@@ -79,6 +83,24 @@
     if (request.status === 'rejected' && request.teacherComment) return 'อาจารย์ไม่อนุมัติ';
     if (request.status === 'rejected' && request.adminComment) return 'ผู้ดูแลไม่อนุมัติ';
     return labels[request.status] || request.status;
+  }
+
+  function teacherName(request) {
+    const t = request.expand?.teacher;
+    if (t?.name) return t.name;
+    if (t?.email) return t.email;
+    const found = $teachers.find((entry) => entry.id === request.teacher);
+    if (found?.name) return found.name;
+    if (found?.email) return found.email;
+    return request.teacher || 'ไม่ระบุอาจารย์';
+  }
+
+  function teacherDisplay(request) {
+    const isTeacherSelf = request.teacher && request.requester && request.teacher === request.requester;
+    return {
+      label: isTeacherSelf ? 'อาจารย์ผู้ขอยืม' : 'อาจารย์ผู้รับทราบ / ขออนุมัติ',
+      name: teacherName(request),
+    };
   }
 
   // Approve flow
@@ -238,7 +260,7 @@
     <div class="mb-6 flex flex-wrap gap-2">
       <button
         type="button"
-        class="rounded-lg px-3.5 py-1.5 text-xs font-bold transition {requestFilter === 'pending' ? 'bg-[#3b4c3e] text-white' : 'bg-[#f0f4ef] text-[#5e6960] hover:bg-[#e4ede3]'}"
+        class="rounded-lg px-3.5 py-1.5 text-xs font-bold transition {requestFilter === 'pending' ? 'bg-blue-600 text-white shadow-xs' : 'bg-[#f0f4ef] text-[#5e6960] hover:bg-[#e4ede3]'}"
         on:click={() => (requestFilter = 'pending')}
       >
         รอผู้ดูแลอนุมัติ ({pendingRequests.length})
@@ -246,7 +268,15 @@
 
       <button
         type="button"
-        class="rounded-lg px-3.5 py-1.5 text-xs font-bold transition {requestFilter === 'approved' ? 'bg-[#2e7d32] text-white' : 'bg-[#f0f4ef] text-[#5e6960] hover:bg-[#e4ede3]'}"
+        class="rounded-lg px-3.5 py-1.5 text-xs font-bold transition {requestFilter === 'pending_teacher' ? 'bg-amber-600 text-white shadow-xs' : 'bg-[#f0f4ef] text-[#5e6960] hover:bg-[#e4ede3]'}"
+        on:click={() => (requestFilter = 'pending_teacher')}
+      >
+        รอ อจ. รับทราบ ({pendingTeacherRequests.length})
+      </button>
+
+      <button
+        type="button"
+        class="rounded-lg px-3.5 py-1.5 text-xs font-bold transition {requestFilter === 'approved' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-[#f0f4ef] text-[#5e6960] hover:bg-[#e4ede3]'}"
         on:click={() => (requestFilter = 'approved')}
       >
         อนุมัติแล้ว ({approvedRequests.length})
@@ -254,7 +284,7 @@
 
       <button
         type="button"
-        class="rounded-lg px-3.5 py-1.5 text-xs font-bold transition {requestFilter === 'rejected' ? 'bg-[#c62828] text-white' : 'bg-[#f0f4ef] text-[#5e6960] hover:bg-[#e4ede3]'}"
+        class="rounded-lg px-3.5 py-1.5 text-xs font-bold transition {requestFilter === 'rejected' ? 'bg-rose-600 text-white shadow-xs' : 'bg-[#f0f4ef] text-[#5e6960] hover:bg-[#e4ede3]'}"
         on:click={() => (requestFilter = 'rejected')}
       >
         ไม่อนุมัติ ({rejectedRequests.length})
@@ -262,7 +292,7 @@
 
       <button
         type="button"
-        class="rounded-lg px-3.5 py-1.5 text-xs font-bold transition {requestFilter === 'all' ? 'bg-[#3b4c3e] text-white' : 'bg-[#f0f4ef] text-[#5e6960] hover:bg-[#e4ede3]'}"
+        class="rounded-lg px-3.5 py-1.5 text-xs font-bold transition {requestFilter === 'all' ? 'bg-[#3b453e] text-white shadow-xs' : 'bg-[#f0f4ef] text-[#5e6960] hover:bg-[#e4ede3]'}"
         on:click={() => (requestFilter = 'all')}
       >
         ทั้งหมด ({requests.length})
@@ -284,7 +314,8 @@
               <div class="flex flex-wrap items-center justify-between gap-2">
                 <div class="flex flex-wrap items-center gap-2">
                   <h2 class="font-bold text-ink">คำขอของ {request.borrowerName}</h2>
-                  <span class="rounded-full px-3 py-1 text-xs font-bold {request.status === 'rejected' ? 'bg-[#fff1ef] text-[#a34e43]' : request.status === 'approved' ? 'bg-[#e8f5e9] text-[#2e7d32]' : 'bg-[#eef2ed] text-sage'}">
+                  <span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold {getStatusBadgeClass(request.status)}">
+                    <span class="h-1.5 w-1.5 rounded-full {getStatusDotClass(request.status)}"></span>
                     {statusLabel(request)}
                   </span>
                 </div>
@@ -304,8 +335,14 @@
               <p class="text-sm text-[#778078]">
                 กำหนดเวลาคืน: <b class="text-ink">{formatDateTime(request.dueDate)}</b> · อีเมล: {request.email}
               </p>
+              <p class="text-sm text-[#778078] flex flex-wrap items-center gap-1.5">
+                <span>{teacherDisplay(request).label}:</span>
+                <span class="inline-flex items-center rounded-md bg-[#eef4ee] px-2.5 py-0.5 text-xs font-bold text-[#2d5236] border border-[#d3e3d4]">
+                  {teacherDisplay(request).name}
+                </span>
+              </p>
               <p class="text-xs text-[#9aa29b]">
-                ส่งคำขอเมื่อ: {formatDateTime(request.created)} · อจ. ผู้รับทราบ: {request.expand?.teacher?.name || request.expand?.teacher?.email || '-'}
+                ส่งคำขอเมื่อ: {formatDateTime(request.created)}
               </p>
 
               {#if request.note}
@@ -334,8 +371,13 @@
               {/if}
             </div>
 
-            <!-- Action buttons for caretaker -->
-            {#if request.status === 'pending_caretaker'}
+            <!-- Action buttons / notices for caretaker -->
+            {#if request.status === 'pending_teacher'}
+              <div class="self-start rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2 text-xs font-semibold text-amber-900 shadow-2xs">
+                <span class="font-bold">⏳ รออาจารย์รับทราบก่อน</span>
+                <p class="mt-0.5 text-[11px] text-amber-700">คำขอนี้ยังต้องรออาจารย์รับทราบ ผู้ดูแลยังไม่สามารถอนุมัติได้</p>
+              </div>
+            {:else if request.status === 'pending_caretaker'}
               <div class="flex flex-wrap gap-2 self-start">
                 <Button variant="outline" size="sm" on:click={() => startReject(request)}>
                   <X size={15} /> ไม่อนุมัติ
