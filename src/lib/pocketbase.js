@@ -34,13 +34,18 @@ export function logout() {
 }
 
 export function isSuperadmin(record = pb.authStore.record) {
-  // อย่าผูกกับ id ของ relation เพราะ id แต่ละ PocketBase ไม่เหมือนกัน
-  // และอาจทำให้ role อื่นถูกตีความเป็นผู้ดูแลโดยผิดพลาด
-  return getUserType(record) === 'superadmin';
+  const type = getUserType(record);
+  return type === 'superadmin' || type === 'admin' || type === '000000000000009' || type === '000000000000000';
 }
 
 export function getUserType(record = pb.authStore.record) {
-  return record?.expand?.user_type?.type || record?.user_type || '';
+  const type = record?.expand?.user_type?.type || record?.user_type || '';
+  if (type === '000000000000009') return 'superadmin';
+  if (type === '000000000000000') return 'admin';
+  if (type === '000000000000002') return 'teachers';
+  if (type === '000000000000001') return 'students';
+  if (type === '000000000000004') return 'staff';
+  return type;
 }
 
 export async function getItems() {
@@ -72,8 +77,11 @@ export async function getTeachers() {
   return users.filter((user) => user.expand?.user_type?.type === 'teachers');
 }
 
-export async function getLoanRequests(status) {
-  const filter = status ? `status = "${status}"` : '';
+export async function getLoanRequests(status = '', teacherId = null) {
+  const filters = [];
+  if (status) filters.push(`status = "${status}"`);
+  if (teacherId) filters.push(`teacher = "${teacherId}"`);
+  const filter = filters.join(' && ');
   return pb.collection('loan_requests').getFullList({ filter, sort: '-created', expand: 'requester,teacher,caretaker', requestKey: null });
 }
 
@@ -88,13 +96,26 @@ export async function getMyLoanRequests() {
   });
 }
 
-export async function updateLoanStatus(id, status, teacherComment = '') {
+export async function updateLoanStatus(id, status, comment = '') {
   const user = pb.authStore.record?.id;
   const data = { status };
-  // ทั้งอาจารย์และผู้ดูแลต้องบอกเหตุผลเมื่อปฏิเสธ แต่มีผู้บันทึกคนละฟิลด์
-  if (status === 'rejected' && getUserType() === 'teachers') data.teacherComment = teacherComment.trim();
-  if (isSuperadmin() && status === 'rejected') data.adminComment = teacherComment.trim();
-  if ((status === 'approved' || status === 'rejected') && isSuperadmin()) data.caretaker = user;
+  const trimmed = comment ? comment.trim() : '';
+
+  if (getUserType() === 'teachers') {
+    // อาจารย์ใส่เหตุผลเฉพาะตอนไม่รับทราบ (rejected) เท่านั้น
+    // ตอนรับทราบ (pending_caretaker) ไม่ต้องมีเหตุผล และกฎ PocketBase ไม่อนุญาตให้แก้ teacherComment
+    if (status === 'rejected' && trimmed) {
+      data.teacherComment = trimmed;
+    }
+  } else {
+    // ผู้ดูแลระบบ / superadmin บันทึกหมายเลข MAC Address หรือข้อความตอนอนุมัติ/ปฏิเสธ
+    if (trimmed) {
+      data.adminComment = trimmed;
+    }
+    if (status === 'approved' || status === 'rejected') {
+      if (user) data.caretaker = user;
+    }
+  }
   return pb.collection('loan_requests').update(id, data, { expand: 'requester,teacher,caretaker' });
 }
 

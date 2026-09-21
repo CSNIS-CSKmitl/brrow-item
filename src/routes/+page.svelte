@@ -1,25 +1,16 @@
 <script>
   import { ArrowRight, CheckCircle2, Search, SlidersHorizontal, Sparkles, UsersRound } from "lucide-svelte";
-  import ItemCard from "../../lib/components/ItemCard.svelte";
-  import Button from "../../lib/components/Button.svelte";
-  import { categories } from "../../lib/mock-data.js";
-
-  export let items = [];
-  export let selectedItems = [];
-  export let onToggleItem = () => {};
-  export let submitted = false;
-  export let submitError = "";
-  export let workflowError = "";
-  export let onResetSubmitted = () => {};
-  export let onClearSubmitError = () => {};
-  export let onClearWorkflowError = () => {};
+  import ItemCard from "../lib/components/ItemCard.svelte";
+  import Button from "../lib/components/Button.svelte";
+  import { categories } from "../lib/mock-data.js";
+  import { items, selectedItems, toggleItem, toastMessage } from "../lib/stores.js";
 
   let search = "";
   let activeCategory = "ทั้งหมด";
   let showAll = false;
   let detailItem = null;
 
-  $: filteredItems = items.filter(
+  $: filteredItems = $items.filter(
     (item) =>
       (activeCategory === "ทั้งหมด" || item.category === activeCategory) &&
       `${item.name} ${item.description}`
@@ -105,8 +96,8 @@
       {#each shownItems as item}
         <ItemCard
           {item}
-          selected={selectedItems.some((selected) => selected.id === item.id)}
-          onSelect={onToggleItem}
+          selected={$selectedItems.some((selected) => selected.id === item.id)}
+          onSelect={toggleItem}
           onOpen={() => (detailItem = item)}
         />
       {/each}
@@ -208,7 +199,7 @@
           <Button
             disabled={detailItem.available === 0}
             on:click={() => {
-              onToggleItem(detailItem);
+              toggleItem(detailItem);
               detailItem = null;
             }}
           >
@@ -221,34 +212,16 @@
 {/if}
 
 <!-- Toasts -->
-{#if submitted}
-  <div class="toast">
-    <CheckCircle2 size={21} />
+{#if $toastMessage.text}
+  <div class="toast {$toastMessage.type === 'error' ? 'error' : ''}">
+    {#if $toastMessage.type !== 'error'}
+      <CheckCircle2 size={21} />
+    {/if}
     <div>
-      <b>ส่งคำขอเรียบร้อยแล้ว</b>
-      <p>เจ้าของจะติดต่อกลับเพื่อยืนยันการยืม</p>
+      <b>{$toastMessage.type === 'error' ? 'เกิดข้อผิดพลาด' : 'สำเร็จ'}</b>
+      <p>{$toastMessage.text}</p>
     </div>
-    <button on:click={onResetSubmitted}>×</button>
-  </div>
-{/if}
-
-{#if submitError}
-  <div class="toast error">
-    <div>
-      <b>ส่งคำขอไม่สำเร็จ</b>
-      <p>{submitError}</p>
-    </div>
-    <button on:click={onClearSubmitError}>×</button>
-  </div>
-{/if}
-
-{#if workflowError}
-  <div class="toast error">
-    <div>
-      <b>อัปเดตสถานะไม่สำเร็จ</b>
-      <p>{workflowError}</p>
-    </div>
-    <button on:click={onClearWorkflowError}>×</button>
+    <button on:click={() => toastMessage.set({ type: '', text: '' })}>×</button>
   </div>
 {/if}
 

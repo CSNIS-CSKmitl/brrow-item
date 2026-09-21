@@ -2,12 +2,31 @@
   import { ArrowRight, LockKeyhole, Package } from 'lucide-svelte';
   import Button from '../../lib/components/Button.svelte';
 
-  export let onLogin = () => {};
-  export let onOAuthLogin = () => {};
-  export let error = '';
+  import { login, loginWithOIDC } from '../../lib/pocketbase.js';
 
   let email = '';
   let password = '';
+  let error = '';
+
+  async function handleSubmit() {
+    error = '';
+    try {
+      await login(email, password);
+      window.location.href = '/';
+    } catch (e) {
+      error = 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
+    }
+  }
+
+  async function handleOIDC() {
+    error = '';
+    try {
+      await loginWithOIDC();
+      window.location.href = '/';
+    } catch (e) {
+      error = e.message || 'ไม่สามารถเข้าสู่ระบบด้วย OIDC ได้';
+    }
+  }
 </script>
 
 <main class="grid min-h-screen place-items-center bg-[#f2f4ef] px-5 py-12">
@@ -20,14 +39,14 @@
     <button
       type="button"
       class="mt-8 flex w-full items-center justify-center gap-2 rounded-xl border border-[#c9d2c8] bg-white px-4 py-3 text-sm font-bold text-sage hover:bg-[#edf2ed]"
-      on:click={onOAuthLogin}
+      on:click={handleOIDC}
     >
       <ArrowRight size={17} /> Login with OIDC
     </button>
     <div class="my-6 flex items-center gap-3 text-xs text-[#9ba39c]">
       <span class="h-px flex-1 bg-[#e7e5df]"></span>หรือเข้าสู่ระบบแบบเดิม<span class="h-px flex-1 bg-[#e7e5df]"></span>
     </div>
-    <form class="space-y-4" on:submit|preventDefault={() => onLogin(email, password)}>
+    <form class="space-y-4" on:submit|preventDefault={handleSubmit}>
       <label>อีเมล<input type="email" bind:value={email} placeholder="you@example.com" required /></label>
       <label>รหัสผ่าน
         <div class="relative">

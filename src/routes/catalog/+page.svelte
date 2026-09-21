@@ -1,10 +1,7 @@
 <script>
   import ItemCard from "../../lib/components/ItemCard.svelte";
   import Button from "../../lib/components/Button.svelte";
-
-  export let items = [];
-  export let selectedItems = [];
-  export let onToggleItem = () => {};
+  import { items, selectedItems, toggleItem } from "../../lib/stores.js";
 
   let detailItem = null;
 </script>
@@ -15,17 +12,17 @@
     <h1 class="mt-2 text-4xl font-bold text-ink">แคตตาล็อกของทั้งหมด</h1>
     <p class="mt-3 text-[#7c857e]">ค้นหาและเลือกของที่ต้องการยืมจากชุมชน</p>
   </div>
-  {#if items.length === 0}
+  {#if $items.length === 0}
     <div class="rounded-2xl border border-dashed border-[#d8d8d0] py-16 text-center text-[#7c857e]">
       ยังไม่มีของให้ยืมในระบบ
     </div>
   {:else}
     <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-      {#each items as item}
+      {#each $items as item}
         <ItemCard
           {item}
-          selected={selectedItems.some((selected) => selected.id === item.id)}
-          onSelect={onToggleItem}
+          selected={$selectedItems.some((selected) => selected.id === item.id)}
+          onSelect={toggleItem}
           onOpen={() => (detailItem = item)}
         />
       {/each}
@@ -63,7 +60,7 @@
           <Button
             disabled={detailItem.available === 0}
             on:click={() => {
-              onToggleItem(detailItem);
+              toggleItem(detailItem);
               detailItem = null;
             }}
           >

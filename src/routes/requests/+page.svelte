@@ -1,17 +1,18 @@
 <script>
-  import { Check, Clock3, Pencil, X } from 'lucide-svelte';
+  import { onMount, onDestroy } from 'svelte';
+  import { Check, Clock3, Download, Pencil, X } from 'lucide-svelte';
   import { items as mockItems } from '../../lib/mock-data.js';
   import Button from '../../lib/components/Button.svelte';
+  import { items, teachers, userType } from '../../lib/stores.js';
+  import { getMyLoanRequests, updateMyLoanRequest, pb } from '../../lib/pocketbase.js';
+  import { exportSingleRequestToCSV, formatDateTime } from '../../lib/csv.js';
 
-  export let requests = [];
-  export let items = [];
-  export let teachers = [];
-  export let onUpdate = async () => {};
-
+  let requests = [];
   let editingId = '';
   let editForm = { dueDate: '', note: '', teacher: '' };
   let editError = '';
   let saving = false;
+  let unsub = null;
 
   const steps = [
     { key: 'pending_teacher', label: 'รอ อจ. รับทราบ' },
@@ -25,8 +26,29 @@
     rejected: 'ไม่อนุมัติ'
   };
 
+  async function loadMyRequests() {
+    try {
+      requests = await getMyLoanRequests();
+    } catch (e) {
+      requests = [];
+    }
+  }
+
+  onMount(async () => {
+    await loadMyRequests();
+    try {
+      unsub = await pb.collection('loan_requests').subscribe('*', () => {
+        void loadMyRequests();
+      });
+    } catch (e) {}
+  });
+
+  onDestroy(() => {
+    if (unsub) unsub();
+  });
+
   function itemName(id) {
-    return items.find((item) => item.id === id)?.name || mockItems.find((item) => item.id === id)?.name || id;
+    return $items.find((item) => item.id === id)?.name || mockItems.find((item) => item.id === id)?.name || id;
   }
 
   function stepIndex(status) {
@@ -34,14 +56,12 @@
   }
 
   function formatDate(value) {
-    if (!value) return '-';
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+    return formatDateTime(value);
   }
 
   function teacherName(request) {
     const teacher = request.expand?.teacher;
-    return teacher?.name || teacher?.email || teachers.find((entry) => entry.id === request.teacher)?.name || 'ไม่ระบุอาจารย์';
+    return teacher?.name || teacher?.email || $teachers.find((entry) => entry.id === request.teacher)?.name || 'ไม่ระบุอาจารย์';
   }
 
   function statusLabel(request) {
@@ -53,14 +73,25 @@
   function startEditing(request) {
     editingId = request.id;
     editError = '';
-    editForm = { dueDate: request.dueDate?.slice(0, 10) || '', note: request.note || '', teacher: request.teacher || '' };
+    let formattedDue = '';
+    if (request.dueDate) {
+      const d = new Date(request.dueDate.replace(' ', 'T'));
+      if (!Number.isNaN(d.getTime())) {
+        const pad = (n) => String(n).padStart(2, '0');
+        formattedDue = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      } else {
+        formattedDue = request.dueDate.slice(0, 16);
+      }
+    }
+    editForm = { dueDate: formattedDue, note: request.note || '', teacher: request.teacher || '' };
   }
 
   async function saveEditing(request) {
     editError = '';
     saving = true;
     try {
-      await onUpdate(request, editForm);
+      await updateMyLoanRequest(request.id, editForm);
+      await loadMyRequests();
       editingId = '';
     } catch (error) {
       editError = error?.response?.message || 'บันทึกการแก้ไขไม่สำเร็จ';
@@ -92,9 +123,21 @@
               <p class="text-xs font-bold text-[#89938b]">คำขอเมื่อ {formatDate(request.created)}</p>
               <h2 class="mt-1 text-lg font-bold text-ink">ของที่ขอยืม</h2>
             </div>
-            <span class="rounded-full px-3 py-1.5 text-xs font-bold {request.status === 'rejected' ? 'bg-[#fff1ef] text-[#a34e43]' : 'bg-[#eef2ed] text-sage'}">
-              {statusLabel(request)}
-            </span>
+            <div class="flex items-center gap-2">
+              {#if $userType !== 'teachers'}
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-1.5 rounded-lg border border-[#c9d2c8] bg-white px-3 py-1 text-xs font-bold text-[#5c685e] hover:bg-[#edf2ed] transition shadow-xs"
+                  title="ดาวน์โหลดคำขอนี้เป็นไฟล์ CSV"
+                  on:click={() => exportSingleRequestToCSV(request, $items)}
+                >
+                  <Download size={13} class="text-sage" /> Export CSV
+                </button>
+              {/if}
+              <span class="rounded-full px-3 py-1.5 text-xs font-bold {request.status === 'rejected' ? 'bg-[#fff1ef] text-[#a34e43]' : 'bg-[#eef2ed] text-sage'}">
+                {statusLabel(request)}
+              </span>
+            </div>
           </div>
 
           <div class="mt-4 rounded-xl bg-[#f5f7f3] p-4">
@@ -104,8 +147,20 @@
               {/each}
             </div>
             <p class="mt-3 text-sm text-[#778078]">อาจารย์ผู้รับทราบ: <b class="text-ink">{teacherName(request)}</b></p>
-            <p class="mt-1 text-sm text-[#778078]">กำหนดคืน: <b class="text-ink">{formatDate(request.dueDate)}</b></p>
+            <p class="mt-1 text-sm text-[#778078]">กำหนดเวลาคืน: <b class="text-ink">{formatDate(request.dueDate)}</b></p>
             {#if request.note}<p class="mt-1 text-sm text-[#778078]">หมายเหตุ: {request.note}</p>{/if}
+            {#if request.adminComment && request.status !== 'rejected'}
+              <div class="mt-3 rounded-lg bg-[#eef7ee] border border-[#d3e5d3] p-3">
+                <span class="text-xs font-bold text-sage">หมายเลข MAC Address:</span>
+                <div class="mt-1 flex flex-wrap items-center gap-1.5">
+                  {#each (request.adminComment || '').split(',').map((s) => s.trim()).filter(Boolean) as mac}
+                    <span class="inline-flex items-center font-mono text-xs font-bold bg-white border border-[#c6d7c7] px-2.5 py-1 rounded-md text-ink shadow-2xs">
+                      {mac}
+                    </span>
+                  {/each}
+                </div>
+              </div>
+            {/if}
           </div>
 
           {#if request.status === 'pending_teacher'}
@@ -123,7 +178,7 @@
                     {/each}
                   </select>
                 </label>
-                <label>วันที่ต้องการคืน<input type="date" bind:value={editForm.dueDate} required /></label>
+                <label>วันและเวลาที่ต้องการคืน<input type="datetime-local" bind:value={editForm.dueDate} required /></label>
                 <label>หมายเหตุ <span class="font-normal text-[#9aa19b]">(ไม่บังคับ)</span>
                   <textarea bind:value={editForm.note} rows="3"></textarea>
                 </label>
