@@ -157,6 +157,10 @@ export async function createItem(data) {
   return pb.collection('items').create(data);
 }
 
+export async function updateItem(id, data) {
+  return pb.collection('items').update(id, data);
+}
+
 export async function deleteItem(id) {
   return pb.collection('items').delete(id);
 }

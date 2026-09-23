@@ -1,10 +1,10 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
-  import { Trash2, Plus, PackageOpen, Check, X, Download, Clock3, Package, FileSpreadsheet } from 'lucide-svelte';
+  import { Trash2, Plus, Pencil, PackageOpen, Check, X, Download, Clock3, Package, FileSpreadsheet } from 'lucide-svelte';
   import Button from '../../lib/components/Button.svelte';
   import { items as mockItems } from '../../lib/mock-data.js';
   import { items, user, teachers } from '../../lib/stores.js';
-  import { createItem, deleteItem, getLoanRequests, updateLoanStatus, pb } from '../../lib/pocketbase.js';
+  import { createItem, updateItem, deleteItem, getLoanRequests, updateLoanStatus, getUserType, pb } from '../../lib/pocketbase.js';
   import { exportRequestsToCSV, exportSingleRequestToCSV, exportItemsToCSV, formatDateTime } from '../../lib/csv.js';
   import { getStatusBadgeClass, getStatusDotClass } from '../../lib/status.js';
 
@@ -166,8 +166,29 @@
   const emptyForm = () => ({ name: '', category: 'อุปกรณ์ไอที', description: '', image: '', available: 1, total: 1, location: '' });
   let form = emptyForm();
   let itemError = '';
+  let editingItemId = '';
   let saving = false;
   let deletingId = '';
+
+  function startEditItem(item) {
+    editingItemId = item.id;
+    itemError = '';
+    form = {
+      name: item.name || '',
+      category: item.category || '',
+      description: item.description || '',
+      image: item.image || '',
+      available: Number(item.available ?? 0),
+      total: Number(item.total ?? 1),
+      location: item.location || '',
+    };
+  }
+
+  function cancelEditItem() {
+    editingItemId = '';
+    form = emptyForm();
+    itemError = '';
+  }
 
   async function submitItem() {
     itemError = '';
@@ -179,11 +200,19 @@
     }
     saving = true;
     try {
-      const created = await createItem({ ...form, total, available });
-      items.update((list) => [created, ...list]);
-      form = emptyForm();
+      const data = { ...form, total, available };
+      if (editingItemId) {
+        const updated = await updateItem(editingItemId, data);
+        items.update((list) => list.map((entry) => entry.id === updated.id ? updated : entry));
+      } else {
+        const created = await createItem(data);
+        items.update((list) => [created, ...list]);
+      }
+      cancelEditItem();
     } catch (cause) {
-      itemError = cause?.response?.message || 'เพิ่มรายการไม่สำเร็จ กรุณาตรวจสอบสิทธิ์ PocketBase';
+      itemError = cause?.response?.message || (editingItemId
+        ? 'แก้ไขรายการไม่สำเร็จ กรุณาตรวจสอบสิทธิ์ PocketBase'
+        : 'เพิ่มรายการไม่สำเร็จ กรุณาตรวจสอบสิทธิ์ PocketBase');
     } finally {
       saving = false;
     }
@@ -196,6 +225,7 @@
     try {
       await deleteItem(item.id);
       items.update((list) => list.filter((entry) => entry.id !== item.id));
+      if (editingItemId === item.id) cancelEditItem();
     } catch (cause) {
       itemError = cause?.response?.message || 'ลบรายการไม่สำเร็จ กรุณาตรวจสอบสิทธิ์ PocketBase';
     } finally {
@@ -244,14 +274,16 @@
       {/if}
     </button>
 
-    <button
-      type="button"
-      class="flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold transition {activeMainTab === 'items' ? 'bg-sage text-white shadow-sm' : 'bg-white text-[#68726b] hover:bg-[#f3f6f3]'}"
-      on:click={() => (activeMainTab = 'items')}
-    >
-      <Package size={16} />
-      <span>จัดการของยืม ({$items.length})</span>
-    </button>
+    {#if getUserType($user) === 'superadmin'}
+      <button
+        type="button"
+        class="flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold transition {activeMainTab === 'items' ? 'bg-sage text-white shadow-sm' : 'bg-white text-[#68726b] hover:bg-[#f3f6f3]'}"
+        on:click={() => (activeMainTab = 'items')}
+      >
+        <Package size={16} />
+        <span>จัดการของยืม ({$items.length})</span>
+      </button>
+    {/if}
   </div>
 
   <!-- TAB 1: LOAN REQUESTS & APPROVALS -->
@@ -443,24 +475,35 @@
   {/if}
 
   <!-- TAB 2: ITEMS MANAGEMENT -->
-  {#if activeMainTab === 'items'}
+  {#if activeMainTab === 'items' && getUserType($user) === 'superadmin'}
     <div class="grid gap-8 lg:grid-cols-[380px_1fr]">
       <form class="h-fit space-y-4 rounded-2xl border border-[#e4e5de] bg-white p-6 shadow-sm" on:submit|preventDefault={submitItem}>
-        <h2 class="text-lg font-bold text-ink">เพิ่มของใหม่</h2>
+        <div class="flex items-center justify-between gap-3">
+          <h2 class="text-lg font-bold text-ink">{editingItemId ? 'แก้ไขข้อมูลของ' : 'เพิ่มของใหม่'}</h2>
+          {#if editingItemId}
+            <button type="button" class="text-xs font-semibold text-[#69736b] hover:text-ink" on:click={cancelEditItem}>ยกเลิก</button>
+          {/if}
+        </div>
         <label>ชื่อของ<input bind:value={form.name} required placeholder="เช่น เต็นท์สนาม" /></label>
         <label>หมวดหมู่<input bind:value={form.category} required /></label>
         <label>รายละเอียด<textarea bind:value={form.description} rows="3" required></textarea></label>
         <label>URL รูปภาพ<input bind:value={form.image} required placeholder="https://..." /></label>
         <div class="grid grid-cols-2 gap-3">
-          <label>จำนวนทั้งหมด<input type="number" min="1" step="1" bind:value={form.total} /></label>
-          <label>พร้อมให้ยืม<input type="number" min="0" step="1" bind:value={form.available} /></label>
+          <label>จำนวนทั้งหมด<input type="number" min="1" step="1" bind:value={form.total} required /></label>
+          <label>พร้อมให้ยืม<input type="number" min="0" step="1" bind:value={form.available} required /></label>
         </div>
         <label>สถานที่จัดเก็บ<input bind:value={form.location} required placeholder="เช่น ห้อง 301" /></label>
         {#if itemError}
           <p class="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{itemError}</p>
         {/if}
         <Button disabled={saving}>
-          {#if saving}กำลังบันทึก...{:else}<Plus size={17} />เพิ่มรายการ{/if}
+          {#if saving}
+            กำลังบันทึก...
+          {:else if editingItemId}
+            <Check size={17} />บันทึกการแก้ไข
+          {:else}
+            <Plus size={17} />เพิ่มรายการ
+          {/if}
         </Button>
       </form>
 
@@ -477,7 +520,19 @@
               <h3 class="font-bold text-ink">{item.name}</h3>
               <p class="mt-1 text-xs text-[#7c857e]">{item.category} · ว่าง {item.available}/{item.total} ชิ้น · {item.location || 'ไม่ระบุสถานที่'}</p>
             </div>
+            {#if getUserType($user) === 'superadmin'}
+              <button
+                type="button"
+                class="icon-btn text-sage"
+                aria-label="แก้ไข {item.name}"
+                title="แก้ไขข้อมูลของ"
+                on:click={() => startEditItem(item)}
+              >
+                <Pencil size={17} />
+              </button>
+            {/if}
             <button
+              type="button"
               class="icon-btn text-red-500 disabled:cursor-not-allowed disabled:opacity-50"
               aria-label="ลบ {item.name}"
               disabled={deletingId === item.id}
