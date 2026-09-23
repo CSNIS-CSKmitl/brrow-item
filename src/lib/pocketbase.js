@@ -13,12 +13,20 @@ export async function login(email, password) {
   return hydrateCurrentUser(authData);
 }
 
-export async function loginWithOIDC() {
-  const methods = await pb.collection('users').listAuthMethods();
-  const preferred = import.meta.env.VITE_POCKETBASE_OIDC_PROVIDER || 'oidc';
-  const provider = methods.oauth2?.providers?.find((entry) => entry.name === preferred) || methods.oauth2?.providers?.[0];
-  if (!provider) throw new Error('ไม่พบ OAuth/OIDC provider ใน PocketBase');
-  const authData = await pb.collection('users').authWithOAuth2({ provider: provider.name });
+export async function loginWithOIDC(authWindow) {
+  // Start PocketBase OAuth synchronously from the click handler. Fetching
+  // auth methods first yields the browser's user activation and causes the
+  // OAuth popup to be blocked by browsers.
+  const provider = import.meta.env.VITE_POCKETBASE_OIDC_PROVIDER || 'oidc';
+  const authData = await pb.collection('users').authWithOAuth2({
+    provider,
+    urlCallback: (url) => {
+      if (!authWindow || authWindow.closed) {
+        throw new Error('เบราว์เซอร์บล็อกหน้าต่างเข้าสู่ระบบ OIDC กรุณาอนุญาตป๊อปอัปสำหรับ req.cskmitl.com');
+      }
+      authWindow.location.href = url;
+    }
+  });
   const response = await fetch('/api/auth/oidc/complete', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

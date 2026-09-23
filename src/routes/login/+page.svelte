@@ -20,10 +20,19 @@
 
   async function handleOIDC() {
     error = '';
+    // Open the window in the click gesture before PocketBase awaits network
+    // requests. Browsers may block a popup opened later by the SDK.
+    const authWindow = window.open('about:blank', '_blank', 'popup,width=600,height=700');
+    if (!authWindow) {
+      error = 'เบราว์เซอร์บล็อกหน้าต่างเข้าสู่ระบบ OIDC กรุณาอนุญาตป๊อปอัปสำหรับ req.cskmitl.com';
+      return;
+    }
+
     try {
-      await loginWithOIDC();
+      await loginWithOIDC(authWindow);
       window.location.href = '/';
     } catch (e) {
+      authWindow.close();
       error = e.message || 'ไม่สามารถเข้าสู่ระบบด้วย OIDC ได้';
     }
   }

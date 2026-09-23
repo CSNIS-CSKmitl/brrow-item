@@ -24,6 +24,11 @@ export default defineConfig(({ mode }) => {
         }
       }
     ],
+    preview: {
+      host: true,
+      port: 4173,
+      allowedHosts: ['req.cskmitl.com']
+    },
     server: {
       proxy: {
         // Route the app's PocketBase base path to the private database host.
