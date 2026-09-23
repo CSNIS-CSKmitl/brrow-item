@@ -1,5 +1,6 @@
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { defineConfig, loadEnv } from 'vite';
+import { completeOidc } from './server/oidc-complete.js';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
@@ -11,10 +12,29 @@ export default defineConfig(({ mode }) => {
   }
 
   return {
-    plugins: [svelte()],
+    plugins: [
+      svelte(),
+      {
+        name: 'oidc-completion-endpoint',
+        configureServer(server) {
+          server.middlewares.use('/api/auth/oidc/complete', (req, res) => completeOidc(req, res, { ...env, ...process.env }));
+        },
+        configurePreviewServer(server) {
+          server.middlewares.use('/api/auth/oidc/complete', (req, res) => completeOidc(req, res, { ...env, ...process.env }));
+        }
+      }
+    ],
     server: {
       proxy: {
-        // Proxy API requests ไปยัง PocketBase Database
+        // Route the app's PocketBase base path to the private database host.
+        '/api/db': {
+          target,
+          changeOrigin: true,
+          secure: false,
+          ws: true,
+          rewrite: (path) => path.replace(/^\/api\/db/, '') || '/'
+        },
+        // Keep the root API proxy for other PocketBase paths used in development.
         '/api': {
           target: target,
           changeOrigin: true,

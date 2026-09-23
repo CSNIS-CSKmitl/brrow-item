@@ -4,7 +4,7 @@ import PocketBase from 'pocketbase';
 // หากเปิดใช้ Proxy หรือใช้ Relative path จะส่ง request ผ่าน Vite Proxy ('/')
 const rawUrl = import.meta.env.VITE_POCKETBASE_URL;
 const useDirectUrl = import.meta.env.VITE_USE_PROXY === 'false' && rawUrl && (rawUrl.startsWith('http://') || rawUrl.startsWith('https://'));
-const pbUrl = useDirectUrl ? rawUrl : '/';
+const pbUrl = useDirectUrl ? rawUrl : (rawUrl && rawUrl !== '/' ? rawUrl : '/');
 
 export const pb = new PocketBase(pbUrl);
 
@@ -19,7 +19,23 @@ export async function loginWithOIDC() {
   const provider = methods.oauth2?.providers?.find((entry) => entry.name === preferred) || methods.oauth2?.providers?.[0];
   if (!provider) throw new Error('ไม่พบ OAuth/OIDC provider ใน PocketBase');
   const authData = await pb.collection('users').authWithOAuth2({ provider: provider.name });
-  return hydrateCurrentUser(authData);
+  const response = await fetch('/api/auth/oidc/complete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      token: authData.token,
+      record: authData.record,
+      meta: authData.meta
+    })
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(result.error || 'ไม่สามารถกำหนดประเภทผู้ใช้จาก OIDC ได้');
+  }
+
+  const record = result.record || authData.record;
+  pb.authStore.save(authData.token, record);
+  return { ...authData, record };
 }
 
 export async function hydrateCurrentUser(authData = { token: pb.authStore.token, record: pb.authStore.record }) {
