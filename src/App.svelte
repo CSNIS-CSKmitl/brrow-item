@@ -37,27 +37,35 @@
   <title>Borrowly — ยืมของได้ง่าย ๆ</title>
 </svelte:head>
 
-{#if $user && path !== "/login"}
-  <Header
-    loanCount={$selectedItems.length}
-    onOpenLoans={() => ($panelOpen = true)}
-    onLogout={handleLogout}
-    canAdmin={$canAdmin}
-    canApprove={$isTeacherOrAdmin}
-  />
-{/if}
+<div class="flex min-h-screen flex-col">
+  {#if $user && path !== "/login"}
+    <Header
+      loanCount={$selectedItems.length}
+      onOpenLoans={() => ($panelOpen = true)}
+      onLogout={handleLogout}
+      canAdmin={$canAdmin}
+      canApprove={$isTeacherOrAdmin}
+    />
+  {/if}
 
-<Router {path} />
+  <div class="flex-1">
+    <Router {path} />
+  </div>
 
-{#if $user && path !== "/login"}
-  <LoanPanel
-    selectedItems={$selectedItems}
-    teachers={$teachers}
-    isTeacher={$userType === "teachers"}
-    borrowerName={$user?.name || $user?.email || ""}
-    borrowerEmail={$user?.email || ""}
-    bind:open={$panelOpen}
-    onClose={() => ($panelOpen = false)}
-    onSubmit={submitLoan}
-  />
-{/if}
+  {#if $user && path !== "/login"}
+    <LoanPanel
+      selectedItems={$selectedItems}
+      teachers={$teachers}
+      isTeacher={$userType === "teachers"}
+      borrowerName={$user?.name || $user?.email || ""}
+      borrowerEmail={$user?.email || ""}
+      bind:open={$panelOpen}
+      onClose={() => ($panelOpen = false)}
+      onSubmit={submitLoan}
+    />
+  {/if}
+
+  <footer class="border-t border-[#e7e5df] bg-cream px-5 py-8 text-center text-sm text-[#879087]">
+    <span>© {new Date().getFullYear()} <a href="https://github.com/techasit5415" target="_blank" rel="noopener noreferrer" class="hover:text-ink hover:underline">Techasit Vanitpattarakul</a></span>
+  </footer>
+</div>

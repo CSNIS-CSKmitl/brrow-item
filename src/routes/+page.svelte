@@ -210,7 +210,6 @@
     </div>
   </div>
 {/if}
-
 <!-- Toasts -->
 {#if $toastMessage.text}
   <div class="toast {$toastMessage.type === 'error' ? 'error' : ''}">
@@ -224,7 +223,3 @@
     <button on:click={() => toastMessage.set({ type: '', text: '' })}>×</button>
   </div>
 {/if}
-
-<footer class="border-t border-[#e7e5df] bg-cream px-5 py-8 text-center text-sm text-[#879087]">
-  © 2025 borrowly · แบ่งปันของดี ให้ชุมชนน่าอยู่ขึ้น
-</footer>
