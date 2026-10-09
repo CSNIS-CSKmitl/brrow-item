@@ -114,7 +114,7 @@ server.on('upgrade', (req, socket, head) => {
   upstream.end();
 });
 
-const port = Number(process.env.PORT || 4173);
+const port = Number(process.env.PORT || 3000);
 server.listen(port, process.env.HOST || '0.0.0.0', () => {
   console.log(`Borrowly server listening on port ${port}`);
 });

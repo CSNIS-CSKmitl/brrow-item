@@ -26,7 +26,7 @@ export default defineConfig(({ mode }) => {
     ],
     preview: {
       host: true,
-      port: 4173,
+      port: 3000,
       allowedHosts: ['req.cskmitl.com']
     },
     server: {

@@ -15,8 +15,10 @@
 
 Runner ต้องมี SSH key/known_hosts ใน user ที่รัน service และมี rsync ส่วน server จะติดตั้ง rsync, Node 24 ผ่าน nvm พร้อม npm และ PM2 ที่ขาดให้เอง ต้องเข้าถึง apt repositories, GitHub, nodejs.org และ npm registry ได้ หากมีหลาย runners ให้เพิ่ม custom label ใน runs-on
 
-Workflow ส่ง dist และ runtime files พร้อม .env โดยไม่ต้องสร้างไฟล์ env เองบน server ใช้ ecosystem.config.cjs ให้ PM2 รัน server.js ด้วย working directory ปลายทางและ Node --env-file=.env ค่า PORT ใน ENV_FILE ต้องไม่ชนแอปอื่น (default 4173); เว็บ SvelteKit ต้องตั้ง ORIGIN ให้ตรง public URL
+Workflow ส่ง dist และ runtime files พร้อม .env โดยไม่ต้องสร้างไฟล์ env เองบน server ใช้ ecosystem.config.cjs ให้ PM2 รัน server.js ด้วย working directory ปลายทางและ Node --env-file=.env ค่า PORT ใน ENV_FILE ต้องไม่ชนแอปอื่น (default 3000); เว็บ SvelteKit ต้องตั้ง ORIGIN ให้ตรง public URL
 
 ก่อน restart ติดตั้งเฉพาะ production dependencies (ข้าม npm lifecycle scripts) แล้วตรวจ HTTP / หลังรันสำเร็จจึง pm2 save และลบ node_modules/.svelte-kit/build/dist บน runner; Node tool cache และ npm cache ยังใช้ซ้ำได้
 
 ไม่ส่ง source ทั้งโปรเจกต์ ไม่ลบ data/, .data/ หรือ uploads บน server แต่ทับ .env จาก ENV_FILE ทุก deploy และไม่มี rollback อัตโนมัติ หากเปลี่ยน VITE_* ที่ใช้ฝังใน client ให้ตั้ง GitHub Variable ที่ workflow ใช้อ่านและ build ใหม่ ค่า server env อื่นแก้ใน ENV_FILE แล้ว deploy
+
+Deploy ผ่าน PM2 กำหนด PORT=3000 และ health check ใช้ port เดียวกัน แม้ ENV_FILE จะมีค่า PORT เดิม ให้ reverse proxy ชี้ไป port 3000; หลายแอปบนเครื่องเดียวกันต้องแยก IP หรือเครื่องเพื่อไม่ให้ port ชนกัน
