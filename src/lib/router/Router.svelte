@@ -21,7 +21,7 @@
   $: matchedComponent = resolvePage(cleanPath);
 
   // ตรวจสอบการเข้าสู่ระบบ
-  $: isUnauthenticated = !$user && cleanPath !== '/login';
+  $: isUnauthenticated = !$user && !['/login', '/privacy', '/terms'].includes(cleanPath);
 
   // ตรวจสอบสิทธิ์เข้าถึง (Guard)
   $: guardFailed =
