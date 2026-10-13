@@ -73,5 +73,5 @@
       <a href="/terms" class="inline-flex min-h-7 items-center underline underline-offset-4 hover:text-ink">ข้อกำหนดการใช้งาน</a>
     </nav>
   </footer>
-  <LegalConsent userId={$user?.id ?? null} />
+  <LegalConsent userId={$user?.id ?? null} enabled={!['/privacy', '/terms'].includes(path.replace(/\/$/, ''))} />
 </div>
