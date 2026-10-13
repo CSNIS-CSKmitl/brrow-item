@@ -4,6 +4,7 @@ import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { loadEnv } from 'vite';
 import { fileURLToPath } from 'node:url';
+import PocketBase from 'pocketbase';
 import { completeOidc } from './server/oidc-complete.js';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
@@ -26,6 +27,40 @@ function pocketBaseTarget() {
   return new URL(process.env.POCKETBASE_URL || process.env.VITE_POCKETBASE_TARGET || 'http://127.0.0.1:8090');
 }
 
+let auditAdmin = null;
+let auditAdminAt = 0;
+async function writeProxyAudit(req, statusCode) {
+  if (!process.env.PB_ADMIN_EMAIL || !process.env.PB_ADMIN_PASSWORD) return;
+  const url = process.env.POCKETBASE_URL || process.env.VITE_POCKETBASE_TARGET || 'http://127.0.0.1:8090';
+  try {
+    if (!auditAdmin || !auditAdmin.authStore.isValid || Date.now() - auditAdminAt > 5 * 60 * 1000) {
+      auditAdmin = new PocketBase(url);
+      auditAdmin.autoCancellation(false);
+      await auditAdmin.collection('_superusers').authWithPassword(process.env.PB_ADMIN_EMAIL, process.env.PB_ADMIN_PASSWORD);
+      auditAdminAt = Date.now();
+    }
+    let userId;
+    const authorization = req.headers.authorization;
+    if (authorization?.startsWith('Bearer ')) {
+      const user = new PocketBase(url);
+      user.autoCancellation(false);
+      user.authStore.save(authorization.slice(7));
+      try { userId = (await user.collection('users').authRefresh()).record?.id; } catch { /* anonymous or expired token */ }
+    }
+    const forwarded = process.env.TRUST_PROXY === 'true' ? req.headers['x-forwarded-for'] : undefined;
+    const sourceIp = String(forwarded || req.socket.remoteAddress || '').split(',')[0].trim();
+    await auditAdmin.collection('service_access_logs').create({
+      service: 'borrowly', user: userId || undefined, source_ip: sourceIp,
+      method: req.method, path: new URL(req.url, 'http://localhost').pathname,
+      action: req.method === 'GET' ? 'api_read' : 'api_write', status_code: statusCode,
+      user_agent: req.headers['user-agent'] || undefined,
+      request_id: req.headers['x-request-id'] || undefined, metadata: {}
+    });
+  } catch (error) {
+    console.warn('[audit] Unable to store borrowly access log:', error instanceof Error ? error.message : error);
+  }
+}
+
 function upstreamOptions(req, target) {
   const pathname = req.url.replace(/^\/api\/db(?=\/|$)/, '') || '/';
   return {
@@ -43,6 +78,7 @@ function proxyPocketBase(req, res) {
   const transport = target.protocol === 'https:' ? httpsRequest : httpRequest;
   const upstream = transport(upstreamOptions(req, target), (response) => {
     res.writeHead(response.statusCode || 502, response.headers);
+    void writeProxyAudit(req, response.statusCode || 502);
     response.pipe(res);
   });
   upstream.on('error', (error) => {
