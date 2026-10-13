@@ -47,8 +47,10 @@ async function writeProxyAudit(req, statusCode) {
       user.authStore.save(authorization.slice(7));
       try { userId = (await user.collection('users').authRefresh()).record?.id; } catch { /* anonymous or expired token */ }
     }
-    const forwarded = process.env.TRUST_PROXY === 'true' ? req.headers['x-forwarded-for'] : undefined;
-    const sourceIp = String(forwarded || req.socket.remoteAddress || '').split(',')[0].trim();
+    const trustedProxy = process.env.TRUST_PROXY === 'true';
+    const realIp = trustedProxy ? req.headers['x-real-ip'] : undefined;
+    const forwarded = trustedProxy ? req.headers['x-forwarded-for'] : undefined;
+    const sourceIp = String(realIp || forwarded || req.socket.remoteAddress || '').split(',')[0].trim();
     await auditAdmin.collection('service_access_logs').create({
       service: 'borrowly', user: userId || undefined, source_ip: sourceIp,
       method: req.method, path: new URL(req.url, 'http://localhost').pathname,
