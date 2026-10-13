@@ -18,4 +18,4 @@
 
 คำขอที่ผ่าน PocketBase proxy ถูกบันทึกลง `service_access_logs` (service=`borrowly`) พร้อม user เมื่อ server ตรวจ token ได้, IP, method, path, action, status code, user-agent และ request ID โดย migration และงานลบข้อมูลเกิน 90 วันอยู่ที่ PocketBase กลางของระบบ
 
-การเปิดใช้งานครั้งแรกจะแสดงหน้าต่างให้ผู้ใช้อ่านและยอมรับ Privacy กับ Terms ก่อนใช้งาน โดยเก็บสถานะการยอมรับแบบเวอร์ชันใน localStorage
+การเปิดใช้งานครั้งแรกจะแสดงหน้าต่างให้ผู้ใช้อ่านและยอมรับ Privacy กับ Terms ก่อนใช้งาน โดยเก็บสถานะการยอมรับแบบเวอร์ชันแยกตามบัญชีใน localStorage
