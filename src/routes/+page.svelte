@@ -3,7 +3,7 @@
   import ItemCard from "../lib/components/ItemCard.svelte";
   import Button from "../lib/components/Button.svelte";
   import { categories } from "../lib/mock-data.js";
-  import { items, selectedItems, toggleItem, toastMessage } from "../lib/stores.js";
+  import { items, selectedItems, toggleItem, toastMessage, user } from "../lib/stores.js";
 
   let search = "";
   let activeCategory = "ทั้งหมด";
@@ -56,6 +56,14 @@
     </div>
   </section>
 
+  {#if !$user}
+    <section class="mx-auto max-w-7xl px-5 py-16 text-center lg:px-8">
+      <p class="eyebrow justify-center">MEMBERS ONLY</p>
+      <h2 class="mt-2 text-3xl font-bold tracking-tight text-ink">เข้าสู่ระบบเพื่อดูรายการของ</h2>
+      <p class="mt-2 text-sm text-[#7c857e]">กรุณาเข้าสู่ระบบก่อนดูรายการและส่งคำขอยืม</p>
+      <a href="/login" class="mt-6 inline-flex rounded-xl bg-sage px-5 py-3 text-sm font-bold text-white">เข้าสู่ระบบ</a>
+    </section>
+  {:else}
   <!-- Catalog Section -->
   <section id="catalog" class="mx-auto max-w-7xl px-5 py-16 lg:px-8">
     <div class="mb-8 flex flex-col justify-between gap-5 md:flex-row md:items-end">
@@ -115,6 +123,7 @@
       </div>
     {/if}
   </section>
+  {/if}
 
   <!-- How It Works Section -->
   <section id="how" class="bg-[#eef2ed] px-5 py-16">

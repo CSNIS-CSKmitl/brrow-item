@@ -107,8 +107,20 @@ export function handleLogout() {
 }
 
 export function loadAll() {
-  loadItems();
-  loadTeachersList();
+  if (!pb.authStore.isValid) return;
+  void refreshAndLoad();
+}
+
+async function refreshAndLoad() {
+  try {
+    await pb.collection('users').authRefresh();
+  } catch (error) {
+    console.error('Refresh Borrowly session failed', error);
+    pb.authStore.clear();
+    user.set(null);
+    return;
+  }
+  await Promise.all([loadItems(), loadTeachersList()]);
   void startRealtime();
 }
 
