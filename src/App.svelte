@@ -3,6 +3,7 @@
   import Header from "./lib/components/Header.svelte";
   import LoanPanel from "./lib/components/LoanPanel.svelte";
   import Router from "./lib/router/Router.svelte";
+  import LegalConsent from "./lib/components/LegalConsent.svelte";
   import {
     user,
     canAdmin,
@@ -72,4 +73,5 @@
       <a href="/terms" class="inline-flex min-h-7 items-center underline underline-offset-4 hover:text-ink">ข้อกำหนดการใช้งาน</a>
     </nav>
   </footer>
+  <LegalConsent />
 </div>
