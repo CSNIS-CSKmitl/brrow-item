@@ -4,14 +4,14 @@
 
   import { login, loginWithOIDC } from '../../lib/pocketbase.js';
 
-  let email = '';
+  let identity = '';
   let password = '';
   let error = '';
 
   async function handleSubmit() {
     error = '';
     try {
-      await login(email, password);
+      await login(identity, password);
       window.location.href = '/';
     } catch (e) {
       error = 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
@@ -56,7 +56,7 @@
       <span class="h-px flex-1 bg-[#e7e5df]"></span>หรือเข้าสู่ระบบแบบเดิม<span class="h-px flex-1 bg-[#e7e5df]"></span>
     </div>
     <form class="space-y-4" on:submit|preventDefault={handleSubmit}>
-      <label>อีเมล<input type="email" bind:value={email} placeholder="you@example.com" required /></label>
+      <label>ชื่อผู้ใช้หรืออีเมล<input type="text" bind:value={identity} autocomplete="username" placeholder="ชื่อผู้ใช้หรืออีเมล" required /></label>
       <label>รหัสผ่าน
         <div class="relative">
           <LockKeyhole class="absolute left-3 top-3 text-[#8a918b]" size={16} />
@@ -64,7 +64,7 @@
         </div>
       </label>
       {#if error}<p class="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{error}</p>{/if}
-      <Button size="lg" disabled={!email || !password}>เข้าสู่ระบบ <ArrowRight size={17} /></Button>
+      <Button size="lg" type="submit" disabled={!identity || !password}>เข้าสู่ระบบ <ArrowRight size={17} /></Button>
     </form>
   </div>
 </main>

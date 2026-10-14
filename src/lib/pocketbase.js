@@ -1,16 +1,15 @@
 import PocketBase from 'pocketbase';
 
-// ตั้งค่า PocketBase client
-// หากเปิดใช้ Proxy หรือใช้ Relative path จะส่ง request ผ่าน Vite Proxy ('/')
-const rawUrl = import.meta.env.VITE_POCKETBASE_URL;
-const useDirectUrl = import.meta.env.VITE_USE_PROXY === 'false' && rawUrl && (rawUrl.startsWith('http://') || rawUrl.startsWith('https://'));
-const pbUrl = useDirectUrl ? rawUrl : (rawUrl && rawUrl !== '/' ? rawUrl : '/');
+// Use the same-origin proxy in the browser, as the other production apps do.
+// This avoids CORS and keeps the PocketBase host private behind the web server.
+const pbUrl = '/api/db';
 
 export const pb = new PocketBase(pbUrl);
+pb.autoCancellation(false);
 
-export async function login(email, password) {
-  const authData = await pb.collection('users').authWithPassword(email, password);
-  return hydrateCurrentUser(authData);
+export async function login(identity, password) {
+  // PocketBase accepts either the username or email as the identity field.
+  return pb.collection('users').authWithPassword(identity.trim(), password);
 }
 
 export async function loginWithOIDC(authWindow) {
@@ -48,9 +47,17 @@ export async function loginWithOIDC(authWindow) {
 
 export async function hydrateCurrentUser(authData = { token: pb.authStore.token, record: pb.authStore.record }) {
   if (!authData.record?.id) return authData;
-  const record = await pb.collection('users').getOne(authData.record.id, { expand: 'user_type' });
-  pb.authStore.save(authData.token || pb.authStore.token, record);
-  return { ...authData, record };
+  try {
+    const record = await pb.collection('users').getOne(authData.record.id, {
+      expand: 'user_type',
+      requestKey: null
+    });
+    pb.authStore.save(authData.token || pb.authStore.token, record);
+    return { ...authData, record };
+  } catch (error) {
+    console.warn('Unable to hydrate current user; continuing with authenticated record', error);
+    return authData;
+  }
 }
 
 export function logout() {
@@ -58,8 +65,10 @@ export function logout() {
 }
 
 export function isSuperadmin(record = pb.authStore.record) {
-  const type = getUserType(record);
-  return type === 'superadmin' || type === 'admin' || type === '000000000000009' || type === '000000000000000';
+  // Application authorization is based only on the user's `user_type` role.
+  // PocketBase `_superusers` are backend service accounts and must never grant
+  // access to the Borrowly admin UI.
+  return getUserType(record) === 'superadmin';
 }
 
 export function getUserType(record = pb.authStore.record) {
@@ -138,7 +147,7 @@ export async function updateLoanStatus(id, status, comment = '') {
       data.teacherComment = trimmed;
     }
   } else {
-    // ผู้ดูแลระบบ / superadmin บันทึกหมายเลข MAC Address หรือข้อความตอนอนุมัติ/ปฏิเสธ
+    // Superadmin บันทึกหมายเลข MAC Address หรือข้อความตอนอนุมัติ/ปฏิเสธ
     if (trimmed) {
       data.adminComment = trimmed;
     }

@@ -6,11 +6,9 @@
   let detailItem = null;
 </script>
 
-<main class="mx-auto max-w-7xl px-5 py-16 lg:px-8">
-  <div class="mb-10">
-    <p class="eyebrow">EXPLORE THE LIBRARY</p>
-    <h1 class="mt-2 text-4xl font-bold text-ink">แคตตาล็อกของทั้งหมด</h1>
-    <p class="mt-3 text-[#7c857e]">ค้นหาและเลือกของที่ต้องการยืมจากชุมชน</p>
+<main class="mx-auto max-w-7xl px-5 py-12 lg:px-8">
+  <div class="mb-8">
+    <h1 class="text-3xl font-bold text-ink">แคตตาล็อก</h1>
   </div>
   {#if $items.length === 0}
     <div class="rounded-2xl border border-dashed border-[#d8d8d0] py-16 text-center text-[#7c857e]">

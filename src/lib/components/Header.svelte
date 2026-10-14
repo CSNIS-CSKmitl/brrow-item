@@ -91,8 +91,6 @@
         {#if canApprove}
           <a class={activeClass('/approvals')} href="/approvals">อนุมัติคำขอ</a>
         {/if}
-        <a class={activeClass('/how')} href="/how">วิธีใช้งาน</a>
-        <a class={activeClass('/about')} href="/about">เกี่ยวกับเรา</a>
         {#if canAdmin}
           <a class={activeClass('/admin')} href="/admin">แอดมิน</a>
         {/if}
@@ -233,8 +231,6 @@
         {#if canApprove}
           <a class="rounded-lg px-3 py-2 {activeClass('/approvals')} hover:bg-white" href="/approvals">อนุมัติคำขอ</a>
         {/if}
-        <a class="rounded-lg px-3 py-2 {activeClass('/how')} hover:bg-white" href="/how">วิธีใช้งาน</a>
-        <a class="rounded-lg px-3 py-2 {activeClass('/about')} hover:bg-white" href="/about">เกี่ยวกับเรา</a>
         {#if canAdmin}
           <a class="rounded-lg px-3 py-2 {activeClass('/admin')} hover:bg-white" href="/admin">แอดมิน</a>
         {/if}

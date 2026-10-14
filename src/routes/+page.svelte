@@ -1,5 +1,5 @@
 <script>
-  import { ArrowRight, CheckCircle2, Search, SlidersHorizontal, Sparkles, UsersRound } from "lucide-svelte";
+  import { CheckCircle2, Search, SlidersHorizontal } from "lucide-svelte";
   import ItemCard from "../lib/components/ItemCard.svelte";
   import Button from "../lib/components/Button.svelte";
   import { categories } from "../lib/mock-data.js";
@@ -21,46 +21,10 @@
 </script>
 
 <main>
-  <!-- Hero Section -->
-  <section class="hero-wrap">
-    <div class="mx-auto grid max-w-7xl items-center gap-10 px-5 py-16 lg:grid-cols-[1.05fr_.95fr] lg:px-8 lg:py-24">
-      <div>
-        <div class="eyebrow">
-          <Sparkles size={14} /> แชร์ของดี ให้ทุกคนได้ใช้
-        </div>
-        <h1 class="mt-5 max-w-xl text-5xl font-extrabold leading-[1.08] tracking-[-.04em] text-ink sm:text-6xl">
-          ของที่อยากใช้<br /><span class="text-sage">ไม่จำเป็นต้องซื้อ</span>
-        </h1>
-        <p class="mt-6 max-w-lg text-base leading-8 text-[#6f7971]">
-          ยืมของจากคนในชุมชนได้ง่าย ๆ ประหยัดเงิน ลดของเหลือใช้
-          และได้พบกับไอเทมที่ช่วยให้ชีวิตสะดวกขึ้น
-        </p>
-        <a href="#catalog">
-          <Button size="lg">เริ่มเลือกของที่อยากยืม <ArrowRight size={18} /></Button>
-        </a>
-        <div class="mt-8 flex items-center gap-6 text-sm text-[#778078]">
-          <span class="flex items-center gap-2"><CheckCircle2 size={17} class="text-sage" /> ยืมง่าย ไม่มีค่าธรรมเนียม</span>
-          <span class="hidden items-center gap-2 sm:flex"><UsersRound size={17} class="text-sage" /> สมาชิก 1,240 คน</span>
-        </div>
-      </div>
-      <div class="hero-art">
-        <div class="floating-note">
-          <span class="status-dot"></span>
-          <div><b>พร้อมให้ยืม</b><small>อัปเดตเมื่อสักครู่นี้</small></div>
-        </div>
-        <img
-          src="https://images.unsplash.com/photo-1523413651479-597eb2da0ad6?auto=format&fit=crop&w=1000&q=85"
-          alt="คนกำลังจัดของสำหรับการเดินทาง"
-        />
-      </div>
-    </div>
-  </section>
 
   {#if !$user}
-    <section class="mx-auto max-w-7xl px-5 py-16 text-center lg:px-8">
-      <p class="eyebrow justify-center">MEMBERS ONLY</p>
-      <h2 class="mt-2 text-3xl font-bold tracking-tight text-ink">เข้าสู่ระบบเพื่อดูรายการของ</h2>
-      <p class="mt-2 text-sm text-[#7c857e]">กรุณาเข้าสู่ระบบก่อนดูรายการและส่งคำขอยืม</p>
+    <section class="mx-auto max-w-7xl px-5 py-20 text-center lg:px-8">
+      <h1 class="text-3xl font-bold tracking-tight text-ink">เข้าสู่ระบบเพื่อดูรายการ</h1>
       <a href="/login" class="mt-6 inline-flex rounded-xl bg-sage px-5 py-3 text-sm font-bold text-white">เข้าสู่ระบบ</a>
     </section>
   {:else}
@@ -68,13 +32,7 @@
   <section id="catalog" class="mx-auto max-w-7xl px-5 py-16 lg:px-8">
     <div class="mb-8 flex flex-col justify-between gap-5 md:flex-row md:items-end">
       <div>
-        <p class="eyebrow">EXPLORE THE LIBRARY</p>
-        <h2 class="mt-2 text-3xl font-bold tracking-tight text-ink">
-          เลือกของที่คุณต้องการ
-        </h2>
-        <p class="mt-2 text-sm text-[#7c857e]">
-          มีของดี ๆ จากสมาชิกในชุมชนรอให้คุณค้นพบ
-        </p>
+        <h1 class="text-3xl font-bold tracking-tight text-ink">แคตตาล็อก</h1>
       </div>
       <div class="search-box">
         <Search size={18} />
@@ -118,63 +76,13 @@
     {#if filteredItems.length > 6 && !showAll}
       <div class="mt-10 text-center">
         <Button variant="outline" on:click={() => (showAll = true)}>
-          ดูของทั้งหมด <ArrowRight size={17} />
+          ดูทั้งหมด
         </Button>
       </div>
     {/if}
   </section>
   {/if}
 
-  <!-- How It Works Section -->
-  <section id="how" class="bg-[#eef2ed] px-5 py-16">
-    <div class="mx-auto max-w-7xl">
-      <div class="text-center">
-        <p class="eyebrow justify-center">HOW IT WORKS</p>
-        <h2 class="mt-2 text-3xl font-bold text-ink">
-          ยืมของ ง่ายกว่าที่คิด
-        </h2>
-      </div>
-      <div class="mt-10 grid gap-5 md:grid-cols-3">
-        <div class="step-card">
-          <span>01</span>
-          <h3>ค้นหาของที่ใช่</h3>
-          <p>เลือกดูของจากหมวดหมู่ หรือค้นหาด้วยคำที่ต้องการ</p>
-        </div>
-        <div class="step-card">
-          <span>02</span>
-          <h3>ส่งคำขอยืม</h3>
-          <p>เพิ่มของในรายการ กรอกข้อมูล แล้วเลือกวันที่ต้องการคืน</p>
-        </div>
-        <div class="step-card">
-          <span>03</span>
-          <h3>รับของไปใช้</h3>
-          <p>รอการยืนยันจากเจ้าของ แล้วนัดรับของได้เลย</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- About Section -->
-  <section id="about" class="mx-auto max-w-7xl px-5 py-16 lg:px-8">
-    <div class="rounded-3xl bg-ink px-7 py-10 text-white md:flex md:items-center md:justify-between md:px-12">
-      <div>
-        <p class="text-xs font-bold uppercase tracking-[.16em] text-[#b7d2bc]">
-          ABOUT BORROWLY
-        </p>
-        <h2 class="mt-3 text-3xl font-bold">ยืมของได้ ใช้ทรัพยากรให้คุ้ม</h2>
-        <p class="mt-3 max-w-xl text-sm leading-7 text-[#c7d0c8]">
-          พื้นที่เล็ก ๆ สำหรับแบ่งปันของที่ไม่ได้ใช้ทุกวัน
-          ให้คนในชุมชนเข้าถึงของดีได้ง่ายขึ้น
-        </p>
-      </div>
-      <a
-        href="#catalog"
-        class="mt-6 inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-bold text-ink md:mt-0"
-      >
-        เริ่มเลือกของ <ArrowRight size={16} />
-      </a>
-    </div>
-  </section>
 </main>
 
 <!-- Item Detail Modal -->
