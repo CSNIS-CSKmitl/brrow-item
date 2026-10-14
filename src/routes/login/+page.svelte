@@ -38,7 +38,7 @@
   }
 </script>
 
-<main class="grid min-h-screen place-items-center bg-[#f2f4ef] px-5 py-12">
+<main class="grid min-h-[calc(100dvh-5rem)] place-items-center bg-[#f2f4ef] px-5 py-12">
   <div class="w-full max-w-md rounded-3xl border border-[#e1e5dd] bg-white p-8 shadow-soft">
     <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-sage text-white">
       <Package size={24} />

@@ -67,7 +67,7 @@
   {/if}
 
   <footer class="border-t border-[#e7e5df] bg-cream px-5 py-3 text-center text-[11px] text-[#879087]">
-    <span>© {new Date().getFullYear()} <a href="https://github.com/techasit5415" target="_blank" rel="noopener noreferrer" class="hover:text-ink hover:underline">Techasit Vanitpattarakul</a></span>
+    <span>© {new Date().getFullYear()} · ผู้จัดทำ <a href="https://github.com/techasit5415" target="_blank" rel="noopener noreferrer" class="hover:text-ink hover:underline">นาย เตชสิทธิ์ วาณิชภัทรกุล</a></span>
     <nav aria-label="นโยบายและข้อกำหนด" class="mt-1 flex flex-wrap items-center justify-center gap-x-4 gap-y-0">
       <a href="/privacy" class="inline-flex min-h-7 items-center underline underline-offset-4 hover:text-ink">นโยบายความเป็นส่วนตัว</a>
       <a href="/terms" class="inline-flex min-h-7 items-center underline underline-offset-4 hover:text-ink">ข้อกำหนดการใช้งาน</a>
