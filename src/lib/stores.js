@@ -157,9 +157,14 @@ async function refreshAndLoad() {
     console.warn('Transient error refreshing Borrowly session; keeping current session', error);
   } finally {
     isRefreshingSession = false;
-    authReady.set(true);
   }
-  await Promise.all([loadItems(), loadTeachersList()]);
+
+  // Items are required by the catalog. Keep the auth/loading shell visible
+  // until this request settles so an in-flight request is not rendered as an
+  // empty catalog. Teacher options are secondary and can load afterwards.
+  await loadItems();
+  authReady.set(true);
+  void loadTeachersList();
   void startRealtime();
 }
 
