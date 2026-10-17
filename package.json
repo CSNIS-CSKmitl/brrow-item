@@ -19,7 +19,7 @@
     "pocketbase": "latest",
     "postcss": "latest",
     "svelte": "latest",
-    "tailwindcss": "^3.4.17",
+    "tailwindcss": "^3.4.19",
     "vite": "latest"
   },
   "devDependencies": {
