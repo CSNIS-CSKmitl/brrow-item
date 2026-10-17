@@ -14,6 +14,7 @@
     filterRequestsByDrilldown,
     isRequestOverdue,
   } from '../../lib/admin-stats.js';
+  import { getAdminDashboardState, updateAdminDashboardState } from '../../lib/admin-dashboard-state.js';
 
   // Main Tab: 'requests' | 'items'
   let activeMainTab = 'requests';
@@ -27,16 +28,17 @@
     rejected: 'ไม่อนุมัติ',
   };
 
-  let requests = [];
+  const initialDashboard = getAdminDashboardState();
+  let requests = initialDashboard.requests;
   let requestFilter = 'pending'; // 'pending' | 'pending_all' | 'pending_teacher' | 'approved' | 'overdue' | 'returned' | 'rejected' | 'all'
   let selectedRange = 'all'; // 'today' | '7d' | 'month' | 'year' | 'all'
 
   // Stats Loading / Error / Freshness state
-  let statsLoading = true;
+  let statsLoading = !initialDashboard.loaded;
   let statsError = '';
-  let lastUpdated = '';
+  let lastUpdated = initialDashboard.lastUpdated;
   let isRealtime = false;
-  let hasLoadedRequests = false;
+  let hasLoadedRequests = initialDashboard.loaded;
 
   // Approve state with text
   let approvingId = '';
@@ -58,6 +60,7 @@
     requests = result;
     hasLoadedRequests = true;
     lastUpdated = new Date().toISOString();
+    updateAdminDashboardState(requests, lastUpdated);
     return result;
   }
 
@@ -114,21 +117,7 @@
   });
 
   $: activeStats = localStats;
-  $: totalUnits = activeStats.totalUnits;
-  $: availableUnits = activeStats.availableUnits;
-  $: borrowedUnits = activeStats.borrowedUnits;
-  $: currentlyBorrowed = activeStats.currentlyBorrowed;
-  $: overdueRequests = activeStats.overdue;
-  $: returnedCount = activeStats.returned;
-  $: totalRequestsCount = activeStats.totalRequests;
-  $: borrowerCount = activeStats.borrowers;
-  $: itemCount = activeStats.items;
   $: pendingCount = activeStats.pending;
-  $: popularEquipment = activeStats.popularEquipment;
-  $: onTimeReturnRate = activeStats.onTimeReturnRate;
-  $: onTimeCount = activeStats.onTimeCount;
-  $: evaluatedReturnCount = activeStats.evaluatedReturnCount;
-  $: trendData = activeStats.trend || [];
 
   $: filteredRequests = filterRequestsByDrilldown(rangeRequests, requestFilter);
 
@@ -346,21 +335,7 @@
   </div>
 
   <AdminStats
-    {itemCount}
-    {availableUnits}
-    {totalUnits}
-    {borrowedUnits}
-    {currentlyBorrowed}
-    {pendingCount}
-    {overdueRequests}
-    {returnedCount}
-    totalRequests={totalRequestsCount}
-    {borrowerCount}
-    {popularEquipment}
-    {onTimeReturnRate}
-    {onTimeCount}
-    {evaluatedReturnCount}
-    trend={trendData}
+    stats={activeStats}
     {selectedRange}
     activeFilter={requestFilter}
     loading={statsLoading}

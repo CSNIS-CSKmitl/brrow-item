@@ -26,7 +26,9 @@
   let showProfileModal = false;
   let profileContainer = null;
 
-  const activeClass = (target) => (path === target ? 'text-ink font-bold' : 'text-[#68726b] hover:text-ink');
+  // Keep the current path as an explicit argument so Svelte invalidates these
+  // class expressions after client-side navigation.
+  const activeClass = (target, current) => (current === target ? 'text-ink font-bold' : 'text-[#68726b] hover:text-ink');
 
   function roleTitle(type) {
     if (type === 'superadmin') return 'ผู้ดูแลระบบสูงสุด (Superadmin)';
@@ -86,13 +88,13 @@
       </a>
 
       <nav class="hidden items-center gap-8 text-sm font-medium md:flex">
-        <a class={activeClass('/catalog')} href="/catalog">แคตตาล็อก</a>
-        <a class={activeClass('/requests')} href="/requests">คำขอยืม</a>
+        <a class={activeClass('/catalog', path)} href="/catalog">แคตตาล็อก</a>
+        <a class={activeClass('/requests', path)} href="/requests">คำขอยืม</a>
         {#if canApprove}
-          <a class={activeClass('/approvals')} href="/approvals">อนุมัติคำขอ</a>
+          <a class={activeClass('/approvals', path)} href="/approvals">อนุมัติคำขอ</a>
         {/if}
         {#if canAdmin}
-          <a class={activeClass('/admin')} href="/admin">แอดมิน</a>
+          <a class={activeClass('/admin', path)} href="/admin">แอดมิน</a>
         {/if}
       </nav>
 
@@ -226,13 +228,13 @@
 
     {#if menuOpen}
       <nav class="mt-4 grid gap-1 border-t border-[#e7e5df] pt-3 text-sm font-medium md:hidden">
-        <a class="rounded-lg px-3 py-2 {activeClass('/catalog')} hover:bg-white" href="/catalog">แคตตาล็อก</a>
-        <a class="rounded-lg px-3 py-2 {activeClass('/requests')} hover:bg-white" href="/requests">คำขอยืม</a>
+        <a class="rounded-lg px-3 py-2 {activeClass('/catalog', path)} hover:bg-white" href="/catalog">แคตตาล็อก</a>
+        <a class="rounded-lg px-3 py-2 {activeClass('/requests', path)} hover:bg-white" href="/requests">คำขอยืม</a>
         {#if canApprove}
-          <a class="rounded-lg px-3 py-2 {activeClass('/approvals')} hover:bg-white" href="/approvals">อนุมัติคำขอ</a>
+          <a class="rounded-lg px-3 py-2 {activeClass('/approvals', path)} hover:bg-white" href="/approvals">อนุมัติคำขอ</a>
         {/if}
         {#if canAdmin}
-          <a class="rounded-lg px-3 py-2 {activeClass('/admin')} hover:bg-white" href="/admin">แอดมิน</a>
+          <a class="rounded-lg px-3 py-2 {activeClass('/admin', path)} hover:bg-white" href="/admin">แอดมิน</a>
         {/if}
       </nav>
     {/if}

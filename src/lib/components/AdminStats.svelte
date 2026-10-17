@@ -3,21 +3,7 @@
   import { TIME_RANGES } from '../admin-stats.js';
   import { formatDateTime } from '../csv.js';
 
-  export let itemCount = 0;
-  export let availableUnits = 0;
-  export let totalUnits = 0;
-  export let borrowedUnits = 0;
-  export let currentlyBorrowed = 0;
-  export let pendingCount = 0;
-  export let overdueRequests = 0;
-  export let returnedCount = 0;
-  export let totalRequests = 0;
-  export let borrowerCount = 0;
-  export let popularEquipment = null;
-  export let onTimeReturnRate = null;
-  export let onTimeCount = 0;
-  export let evaluatedReturnCount = 0;
-  export let trend = [];
+  export let stats = {};
   export let selectedRange = 'all';
   export let activeFilter = 'all';
   export let loading = false;
@@ -29,7 +15,21 @@
   export let onRefresh = () => {};
 
   $: rangeLabel = TIME_RANGES.find((entry) => entry.value === selectedRange)?.label || 'ทั้งหมด';
-  $: safeTrend = Array.isArray(trend) ? trend : [];
+  $: itemCount = Number(stats.items) || 0;
+  $: availableUnits = Number(stats.availableUnits) || 0;
+  $: totalUnits = Number(stats.totalUnits) || 0;
+  $: borrowedUnits = Number(stats.borrowedUnits) || 0;
+  $: currentlyBorrowed = Number(stats.currentlyBorrowed) || 0;
+  $: pendingCount = Number(stats.pending) || 0;
+  $: overdueRequests = Number(stats.overdue) || 0;
+  $: returnedCount = Number(stats.returned) || 0;
+  $: totalRequests = Number(stats.totalRequests) || 0;
+  $: borrowerCount = Number(stats.borrowers) || 0;
+  $: popularEquipment = stats.popularEquipment || null;
+  $: onTimeReturnRate = stats.onTimeReturnRate ?? null;
+  $: onTimeCount = Number(stats.onTimeCount) || 0;
+  $: evaluatedReturnCount = Number(stats.evaluatedReturnCount) || 0;
+  $: safeTrend = Array.isArray(stats.trend) ? stats.trend : [];
   $: maxTrend = Math.max(1, ...safeTrend.map((entry) => Number(entry.count) || 0));
   $: trendTotal = safeTrend.reduce((sum, entry) => sum + (Number(entry.count) || 0), 0);
   $: availabilityRate = totalUnits ? Math.round((availableUnits / totalUnits) * 100) : 0;
