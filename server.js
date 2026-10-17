@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import PocketBase from 'pocketbase';
 import { completeOidc } from './server/oidc-complete.js';
 import { clearSessionCookie, getSessionUser, sessionCookie } from './server/session.js';
-import { computeAdminStats } from './src/lib/admin-stats.js';
+import { computeAdminStats } from './server/admin-stats.js';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const dist = path.join(root, 'dist');
