@@ -1,7 +1,7 @@
 <script>
   import NotFoundPage from '../../routes/+error.svelte';
   import UnauthorizedPage from '../../routes/+unauthorized.svelte';
-  import { user, userType, canAdmin } from '../stores.js';
+  import { authReady, user, userType, canAdmin } from '../stores.js';
 
   export let path = '/';
 
@@ -21,7 +21,7 @@
   $: matchedComponent = resolvePage(cleanPath);
 
   // ตรวจสอบการเข้าสู่ระบบ
-  $: isUnauthenticated = !$user && !['/login', '/privacy', '/terms'].includes(cleanPath);
+  $: isUnauthenticated = $authReady && !$user && !['/login', '/privacy', '/terms'].includes(cleanPath);
 
   // ตรวจสอบสิทธิ์เข้าถึง (Guard)
   $: guardFailed =
@@ -46,4 +46,13 @@
     : {};
 </script>
 
-<svelte:component this={activeComponent} {...activeProps} />
+{#if !$authReady && !['/privacy', '/terms'].includes(cleanPath)}
+  <main class="grid min-h-[calc(100dvh-5rem)] place-items-center bg-[#f2f4ef] px-5 py-12" aria-busy="true" aria-label="กำลังตรวจสอบการเข้าสู่ระบบ">
+    <div class="flex flex-col items-center gap-3 text-[#68726b]">
+      <span class="h-8 w-8 animate-spin rounded-full border-2 border-[#c8d4c9] border-t-sage"></span>
+      <p class="text-sm font-semibold">กำลังตรวจสอบการเข้าสู่ระบบ…</p>
+    </div>
+  </main>
+{:else}
+  <svelte:component this={activeComponent} {...activeProps} />
+{/if}

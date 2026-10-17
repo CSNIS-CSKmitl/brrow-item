@@ -18,6 +18,10 @@ const hasPb = Boolean(
 
 // Auth state
 export const user = writable(pb.authStore.record);
+// Distinguish "still restoring the session" from "confirmed signed out".
+// Route guards must wait for this flag or the login page flashes while
+// PocketBase refreshes an existing session.
+export const authReady = writable(false);
 export const userType = derived(user, ($user) => getUserType($user));
 export const canAdmin = derived(user, ($user) => isSuperadmin($user));
 export const isTeacherOrAdmin = derived(user, ($user) => isSuperadmin($user) || getUserType($user) === 'teachers');
@@ -106,11 +110,16 @@ export function handleLogout() {
   stopRealtime();
   pbLogout();
   user.set(null);
+  authReady.set(true);
   window.location.href = '/login';
 }
 
 export function loadAll() {
-  if (!pb.authStore.isValid) return;
+  if (!pb.authStore.isValid) {
+    user.set(null);
+    authReady.set(true);
+    return;
+  }
   void refreshAndLoad();
 }
 
@@ -135,12 +144,14 @@ async function refreshAndLoad() {
       initializedUserId = null;
       pb.authStore.clear();
       user.set(null);
+      authReady.set(true);
       isRefreshingSession = false;
       return;
     }
     console.warn('Transient error refreshing Borrowly session; keeping current session', error);
   } finally {
     isRefreshingSession = false;
+    authReady.set(true);
   }
   await Promise.all([loadItems(), loadTeachersList()]);
   void startRealtime();
