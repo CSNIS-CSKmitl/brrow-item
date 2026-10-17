@@ -38,6 +38,7 @@ export const toastMessage = writable({ type: '', text: '' });
 let unsubscribeRealtime = null;
 let isRefreshingSession = false;
 let initializedUserId = pb.authStore.record?.id || null;
+let bootstrapPromise = null;
 
 export async function loadItems() {
   try {
@@ -120,7 +121,12 @@ export function loadAll() {
     authReady.set(true);
     return;
   }
-  void refreshAndLoad();
+  if (!bootstrapPromise) {
+    bootstrapPromise = refreshAndLoad().finally(() => {
+      bootstrapPromise = null;
+    });
+  }
+  return bootstrapPromise;
 }
 
 async function refreshAndLoad() {
@@ -157,7 +163,9 @@ async function refreshAndLoad() {
   void startRealtime();
 }
 
-// Subscribe to PocketBase auth changes without triggering recursive authRefresh loops
+// Mirror authentication changes only. Login flows navigate to a fresh page,
+// whose single bootstrap performs authRefresh and data loading. Starting a new
+// bootstrap here can recurse because authRefresh itself updates authStore.
 pb.authStore.onChange(() => {
   const current = pb.authStore.record;
   user.update((prev) => {
@@ -166,14 +174,11 @@ pb.authStore.onChange(() => {
     }
     return current;
   });
-  if (isRefreshingSession) return;
   const currentId = current?.id || null;
   if (!currentId) {
     initializedUserId = null;
+    void stopRealtime();
     return;
   }
-  if (currentId !== initializedUserId) {
-    initializedUserId = currentId;
-    loadAll();
-  }
+  initializedUserId = currentId;
 });
