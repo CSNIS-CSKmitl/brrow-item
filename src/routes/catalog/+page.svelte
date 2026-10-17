@@ -1,7 +1,7 @@
 <script>
   import ItemCard from "../../lib/components/ItemCard.svelte";
   import Button from "../../lib/components/Button.svelte";
-  import { items, selectedItems, toggleItem } from "../../lib/stores.js";
+  import { items, itemsLoaded, itemsLoading, selectedItems, toggleItem } from "../../lib/stores.js";
 
   let detailItem = null;
 </script>
@@ -10,7 +10,20 @@
   <div class="mb-8">
     <h1 class="text-3xl font-bold text-ink">แคตตาล็อก</h1>
   </div>
-  {#if $items.length === 0}
+  {#if $itemsLoading && !$itemsLoaded}
+    <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3" aria-busy="true" aria-label="กำลังโหลดรายการของ">
+      {#each Array(3) as _}
+        <div class="overflow-hidden rounded-2xl border border-[#e4e5de] bg-white">
+          <div class="h-52 animate-pulse bg-[#e9ede7]"></div>
+          <div class="space-y-3 p-4">
+            <div class="h-5 w-2/3 animate-pulse rounded bg-[#e9ede7]"></div>
+            <div class="h-4 w-full animate-pulse rounded bg-[#f0f2ee]"></div>
+            <div class="h-10 w-full animate-pulse rounded-xl bg-[#e9ede7]"></div>
+          </div>
+        </div>
+      {/each}
+    </div>
+  {:else if $items.length === 0}
     <div class="rounded-2xl border border-dashed border-[#d8d8d0] py-16 text-center text-[#7c857e]">
       ยังไม่มีของให้ยืมในระบบ
     </div>

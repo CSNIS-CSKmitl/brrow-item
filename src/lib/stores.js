@@ -28,6 +28,8 @@ export const isTeacherOrAdmin = derived(user, ($user) => isSuperadmin($user) || 
 
 // Shared Items & Loan Cart
 export const items = writable(hasPb ? [] : mockItems);
+export const itemsLoading = writable(hasPb);
+export const itemsLoaded = writable(!hasPb);
 export const selectedItems = writable([]);
 export const panelOpen = writable(false);
 export const teachers = writable([]);
@@ -41,12 +43,16 @@ let initializedUserId = pb.authStore.record?.id || null;
 let bootstrapPromise = null;
 
 export async function loadItems() {
+  itemsLoading.set(true);
   try {
     const list = await getItems();
     if (hasPb) items.set(list);
     else if (list.length) items.set(list);
   } catch (e) {
     console.error('Load items failed', e);
+  } finally {
+    itemsLoaded.set(true);
+    itemsLoading.set(false);
   }
 }
 
@@ -157,13 +163,12 @@ async function refreshAndLoad() {
     console.warn('Transient error refreshing Borrowly session; keeping current session', error);
   } finally {
     isRefreshingSession = false;
+    authReady.set(true);
   }
 
-  // Items are required by the catalog. Keep the auth/loading shell visible
-  // until this request settles so an in-flight request is not rendered as an
-  // empty catalog. Teacher options are secondary and can load afterwards.
-  await loadItems();
-  authReady.set(true);
+  // Data stores own their loading state; authentication should not block the
+  // whole application while catalog data is fetched.
+  void loadItems();
   void loadTeachersList();
   void startRealtime();
 }
