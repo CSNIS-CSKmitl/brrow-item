@@ -17,7 +17,7 @@ function getRedirectTarget(url) {
 
 export async function load({ url }) {
   const cleanPath = normalizePath(url.pathname);
-  const isPublicRoute = ['/login', '/privacy', '/terms'].includes(cleanPath);
+  const isPublicRoute = ['/', '/login', '/privacy', '/terms'].includes(cleanPath);
 
   await loadAll();
 

@@ -1,7 +1,7 @@
 <script>
   import '../app.css';
   import { onDestroy } from 'svelte';
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import Header from '../lib/components/Header.svelte';
   import LoanPanel from '../lib/components/LoanPanel.svelte';
   import LegalConsent from '../lib/components/LegalConsent.svelte';
@@ -21,7 +21,7 @@
 
   let { data, children } = $props();
 
-  let path = $derived($page.url.pathname.replace(/\/$/, '') || '/');
+  let path = $derived(page.url.pathname.replace(/\/$/, '') || '/');
 
   onDestroy(() => {
     void stopRealtime();

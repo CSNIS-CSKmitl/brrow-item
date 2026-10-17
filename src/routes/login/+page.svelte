@@ -1,6 +1,6 @@
 <script>
   import { goto } from '$app/navigation';
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import { ArrowRight, LockKeyhole, Package } from 'lucide-svelte';
   import Button from '../../lib/components/Button.svelte';
 
@@ -12,7 +12,7 @@
   let error = '';
 
   function getRedirectTarget() {
-    const raw = $page.url.searchParams.get('redirect') || '/';
+    const raw = page.url.searchParams.get('redirect') || '/';
     return raw.startsWith('/') && !raw.startsWith('//') && !raw.startsWith('/login') ? raw : '/';
   }
 
