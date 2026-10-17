@@ -33,6 +33,7 @@
   let rejectError = '';
 
   let unsubRequests = null;
+  let serverStats = null;
 
   async function loadRequests() {
     try {
@@ -44,6 +45,12 @@
 
   onMount(async () => {
     await loadRequests();
+    try {
+      const response = await fetch('/api/admin/stats', { credentials: 'same-origin' });
+      if (response.ok) serverStats = (await response.json()).stats || null;
+    } catch (e) {
+      serverStats = null;
+    }
     try {
       unsubRequests = await pb.collection('loan_requests').subscribe('*', () => {
         void loadRequests();
@@ -59,10 +66,12 @@
   $: pendingRequests = requests.filter((r) => r.status === 'pending_caretaker');
   $: approvedRequests = requests.filter((r) => r.status === 'approved');
   $: rejectedRequests = requests.filter((r) => r.status === 'rejected');
-  $: totalUnits = $items.reduce((sum, item) => sum + Math.max(0, Number(item.total) || 0), 0);
-  $: availableUnits = $items.reduce((sum, item) => sum + Math.max(0, Number(item.available) || 0), 0);
-  $: overdueRequests = approvedRequests.filter((request) => request.dueDate && new Date(request.dueDate).getTime() < Date.now());
-  $: borrowerCount = new Set(requests.map((request) => request.email).filter(Boolean)).size;
+  $: totalUnits = serverStats?.totalUnits ?? $items.reduce((sum, item) => sum + Math.max(0, Number(item.total) || 0), 0);
+  $: availableUnits = serverStats?.availableUnits ?? $items.reduce((sum, item) => sum + Math.max(0, Number(item.available) || 0), 0);
+  $: overdueRequests = serverStats?.overdue ?? approvedRequests.filter((request) => request.dueDate && new Date(request.dueDate).getTime() < Date.now()).length;
+  $: borrowerCount = serverStats?.borrowers ?? new Set(requests.map((request) => request.email).filter(Boolean)).size;
+  $: itemCount = serverStats?.items ?? $items.length;
+  $: pendingCount = serverStats?.pending ?? pendingRequests.length + pendingTeacherRequests.length;
 
   $: filteredRequests =
     requestFilter === 'pending'
@@ -265,7 +274,7 @@
   <section class="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-5" aria-label="สถิติระบบยืมของ">
     <div class="rounded-2xl border border-[#dce8dd] bg-[#f4f8f4] p-4">
       <p class="text-xs font-semibold text-[#68726b]">รายการของ</p>
-      <p class="mt-2 text-2xl font-bold text-ink">{$items.length}</p>
+      <p class="mt-2 text-2xl font-bold text-ink">{itemCount}</p>
     </div>
     <div class="rounded-2xl border border-[#dce8dd] bg-[#f4f8f4] p-4">
       <p class="text-xs font-semibold text-[#68726b]">ของพร้อมให้ยืม</p>
@@ -273,7 +282,7 @@
     </div>
     <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4">
       <p class="text-xs font-semibold text-amber-800">รออนุมัติ</p>
-      <p class="mt-2 text-2xl font-bold text-amber-900">{pendingRequests.length + pendingTeacherRequests.length}</p>
+      <p class="mt-2 text-2xl font-bold text-amber-900">{pendingCount}</p>
     </div>
     <div class="rounded-2xl border border-rose-200 bg-rose-50 p-4">
       <p class="text-xs font-semibold text-rose-800">เกินกำหนดคืน</p>

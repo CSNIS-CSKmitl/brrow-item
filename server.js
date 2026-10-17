@@ -48,6 +48,35 @@ function jsonResponse(res, status, body, headers = {}) {
   res.end(JSON.stringify(body));
 }
 
+async function adminPocketBase() {
+  if (!process.env.PB_ADMIN_EMAIL || !process.env.PB_ADMIN_PASSWORD) throw new Error('admin credentials are not configured');
+  const pb = new PocketBase(pocketBaseTarget().toString());
+  pb.autoCancellation(false);
+  await pb.collection('_superusers').authWithPassword(process.env.PB_ADMIN_EMAIL, process.env.PB_ADMIN_PASSWORD);
+  return pb;
+}
+
+async function loadBorrowlyStats() {
+  const pb = await adminPocketBase();
+  const [items, requests] = await Promise.all([
+    pb.collection('items').getFullList({ fields: 'id,total,available' }),
+    pb.collection('loan_requests').getFullList({ fields: 'id,status,dueDate,email' })
+  ]);
+  const totalUnits = items.reduce((sum, item) => sum + Math.max(0, Number(item.total) || 0), 0);
+  const availableUnits = items.reduce((sum, item) => sum + Math.max(0, Number(item.available) || 0), 0);
+  const pending = requests.filter((request) => ['pending_teacher', 'pending_caretaker'].includes(request.status)).length;
+  const approved = requests.filter((request) => request.status === 'approved');
+  const overdue = approved.filter((request) => request.dueDate && new Date(request.dueDate).getTime() < Date.now()).length;
+  return {
+    items: items.length,
+    totalUnits,
+    availableUnits,
+    pending,
+    overdue,
+    borrowers: new Set(requests.map((request) => request.email).filter(Boolean)).size
+  };
+}
+
 let auditAdmin = null;
 let auditAdminAt = 0;
 async function writeProxyAudit(req, statusCode) {
@@ -166,6 +195,24 @@ const server = createServer(async (req, res) => {
     } catch (error) {
       const status = Number(error?.status) >= 400 && Number(error?.status) < 500 ? Number(error.status) : 401;
       jsonResponse(res, status, { ok: false, error: 'authentication session could not be verified' });
+    }
+    return;
+  }
+  if (pathname === '/api/admin/stats') {
+    if (req.method !== 'GET') {
+      jsonResponse(res, 405, { ok: false, error: 'method not allowed' }, { Allow: 'GET' });
+      return;
+    }
+    const user = await getSessionUser(req);
+    if (!user || user.role !== 'superadmin') {
+      jsonResponse(res, user ? 403 : 401, { ok: false, error: user ? 'forbidden' : 'authentication required' });
+      return;
+    }
+    try {
+      jsonResponse(res, 200, { ok: true, stats: await loadBorrowlyStats() });
+    } catch (error) {
+      console.error('[admin/stats] failed:', error instanceof Error ? error.message : error);
+      jsonResponse(res, 503, { ok: false, error: 'statistics are temporarily unavailable' });
     }
     return;
   }
