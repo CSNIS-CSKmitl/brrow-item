@@ -8,6 +8,7 @@
   let identity = '';
   let password = '';
   let error = '';
+  let restoringSession = Boolean(pb.authStore.isValid && pb.authStore.token && pb.authStore.record?.id);
 
   function getRedirectTarget() {
     const params = new URLSearchParams(window.location.search);
@@ -16,15 +17,17 @@
   }
 
   onMount(async () => {
-    if (!pb.authStore.isValid || !pb.authStore.token || !pb.authStore.record?.id) return;
+    if (!restoringSession) return;
     try {
-      await establishServerSession({
+      const record = await establishServerSession({
         token: pb.authStore.token,
         record: pb.authStore.record,
       });
+      if (record) pb.authStore.save(pb.authStore.token, record);
       window.location.replace(getRedirectTarget());
     } catch {
-      // Token is no longer valid on the server; stay on login page
+      // Token is no longer valid on the server; show login page
+      restoringSession = false;
     }
   });
 
@@ -58,6 +61,7 @@
   }
 </script>
 
+{#if !restoringSession}
 <main class="grid min-h-[calc(100dvh-5rem)] place-items-center bg-[#f2f4ef] px-5 py-12">
   <div class="w-full max-w-md rounded-3xl border border-[#e1e5dd] bg-white p-8 shadow-soft">
     <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-sage text-white">
@@ -88,3 +92,4 @@
     </form>
   </div>
 </main>
+{/if}

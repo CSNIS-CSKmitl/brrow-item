@@ -1,5 +1,5 @@
 import PocketBase from 'pocketbase';
-import { sessionCookie } from './session.js';
+import { cacheSessionUser, sessionCookie } from './session.js';
 
 const DEFAULT_USER_TYPE_ID = '000000000000001';
 const ROLE_MAP = {
@@ -89,9 +89,11 @@ export async function completeOidc(req, res, env = process.env) {
       admin.autoCancellation(false);
       await admin.collection('_superusers').authWithPassword(env.PB_ADMIN_EMAIL, env.PB_ADMIN_PASSWORD);
       const updated = await admin.collection('users').update(record.id, { user_type: userTypeId });
+      cacheSessionUser(authData.token, updated);
       return respond(res, 200, { ok: true, record: updated }, { 'Set-Cookie': sessionCookie(authData.token, true) });
     }
 
+    cacheSessionUser(authData.token, record);
     return respond(res, 200, { ok: true, record }, { 'Set-Cookie': sessionCookie(authData.token, true) });
   } catch (error) {
     const status = Number(error?.status) || 500;

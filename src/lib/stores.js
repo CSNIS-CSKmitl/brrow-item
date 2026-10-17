@@ -33,7 +33,7 @@ export const toastMessage = writable({ type: '', text: '' });
 
 let unsubscribeRealtime = null;
 let isRefreshingSession = false;
-let initializedUserId = null;
+let initializedUserId = pb.authStore.record?.id || null;
 
 export async function loadItems() {
   try {
@@ -149,7 +149,12 @@ async function refreshAndLoad() {
 // Subscribe to PocketBase auth changes without triggering recursive authRefresh loops
 pb.authStore.onChange(() => {
   const current = pb.authStore.record;
-  user.set(current);
+  user.update((prev) => {
+    if (current && prev?.id === current.id && !current.expand?.user_type && prev.expand?.user_type) {
+      return { ...current, expand: { ...current.expand, user_type: prev.expand.user_type } };
+    }
+    return current;
+  });
   if (isRefreshingSession) return;
   const currentId = current?.id || null;
   if (!currentId) {

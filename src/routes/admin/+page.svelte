@@ -27,16 +27,38 @@
     rejected: 'ไม่อนุมัติ',
   };
 
-  let requests = [];
+  const ADMIN_SNAPSHOT_KEY = 'borrowly_admin_snapshot_v1';
+
+  function readCachedSnapshot() {
+    if (typeof sessionStorage === 'undefined') return null;
+    try {
+      const raw = sessionStorage.getItem(ADMIN_SNAPSHOT_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function writeCachedSnapshot(patch) {
+    if (typeof sessionStorage === 'undefined') return;
+    try {
+      const prev = readCachedSnapshot() || {};
+      sessionStorage.setItem(ADMIN_SNAPSHOT_KEY, JSON.stringify({ ...prev, ...patch }));
+    } catch {}
+  }
+
+  const initialSnapshot = readCachedSnapshot();
+
+  let requests = Array.isArray(initialSnapshot?.requests) ? initialSnapshot.requests : [];
   let requestFilter = 'pending'; // 'pending' | 'pending_all' | 'pending_teacher' | 'approved' | 'overdue' | 'returned' | 'rejected' | 'all'
   let selectedRange = 'all'; // 'today' | '7d' | 'month' | 'year' | 'all'
 
   // Stats Loading / Error / Freshness state
-  let statsLoading = true;
+  let statsLoading = !initialSnapshot?.lastUpdated;
   let statsError = '';
-  let lastUpdated = '';
+  let lastUpdated = initialSnapshot?.lastUpdated || '';
   let isRealtime = false;
-  let hasLoadedRequests = false;
+  let hasLoadedRequests = Array.isArray(initialSnapshot?.requests);
 
   // Approve state with text
   let approvingId = '';
@@ -53,7 +75,7 @@
   let returnError = '';
 
   let unsubRequests = null;
-  let serverStats = null;
+  let serverStats = initialSnapshot?.serverStats || null;
 
   async function fetchServerStats(range = selectedRange) {
     try {
@@ -66,6 +88,7 @@
         serverStats = payload.stats;
         lastUpdated = payload.stats.generatedAt || new Date().toISOString();
         statsLoading = false;
+        writeCachedSnapshot({ serverStats, lastUpdated });
         return { ok: true, stats: payload.stats };
       }
       return { ok: false };
@@ -80,6 +103,7 @@
     hasLoadedRequests = true;
     lastUpdated = new Date().toISOString();
     statsLoading = false;
+    writeCachedSnapshot({ requests, lastUpdated });
     return result;
   }
 
@@ -94,7 +118,7 @@
     const requestsOk = reqOutcome.status === 'fulfilled';
     const apiOk = statsOutcome.status === 'fulfilled' && statsOutcome.value?.ok;
 
-    if (!requestsOk && !apiOk) {
+    if (!requestsOk && !apiOk && !hasLoadedRequests && !serverStats) {
       statsError = 'ไม่สามารถโหลดข้อมูลสถิติและรายการคำขอได้ กรุณาตรวจสอบการเชื่อมต่อแล้วลองใหม่';
     } else if (!lastUpdated) {
       lastUpdated = new Date().toISOString();
@@ -503,7 +527,11 @@
 
     <!-- Requests List -->
     <div class="space-y-4">
-      {#if filteredRequests.length === 0}
+      {#if !hasLoadedRequests && statsLoading}
+        <div class="rounded-2xl border border-dashed border-[#d8d8d0] py-16 text-center text-[#7c857e]">
+          กำลังโหลดรายการคำขอ...
+        </div>
+      {:else if filteredRequests.length === 0}
         <div class="rounded-2xl border border-dashed border-[#d8d8d0] py-16 text-center text-[#7c857e]">
           ไม่มีคำขอในหมวดหมู่นี้
         </div>

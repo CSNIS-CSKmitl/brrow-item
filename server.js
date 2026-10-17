@@ -6,7 +6,15 @@ import { loadEnv } from 'vite';
 import { fileURLToPath } from 'node:url';
 import PocketBase from 'pocketbase';
 import { completeOidc } from './server/oidc-complete.js';
-import { clearSessionCookie, getSessionUser, sessionCookie } from './server/session.js';
+import {
+  cacheSessionUser,
+  clearSessionCookie,
+  getSessionUser,
+  invalidateSessionUser,
+  jwtUserId,
+  sessionCookie,
+  sessionToken
+} from './server/session.js';
 import { computeAdminStats } from './server/admin-stats.js';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
@@ -29,6 +37,11 @@ function pocketBaseTarget() {
   return new URL(process.env.POCKETBASE_URL || process.env.VITE_POCKETBASE_TARGET || 'http://127.0.0.1:8090');
 }
 
+function isSecureRequest(req) {
+  const proto = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim().toLowerCase();
+  return proto === 'https' || Boolean(req.socket?.encrypted);
+}
+
 async function readJsonBody(req) {
   const chunks = [];
   let size = 0;
@@ -49,12 +62,34 @@ function jsonResponse(res, status, body, headers = {}) {
   res.end(JSON.stringify(body));
 }
 
+let sharedAdmin = null;
+let sharedAdminAt = 0;
+let sharedAdminPromise = null;
+
 async function adminPocketBase() {
-  if (!process.env.PB_ADMIN_EMAIL || !process.env.PB_ADMIN_PASSWORD) throw new Error('admin credentials are not configured');
-  const pb = new PocketBase(pocketBaseTarget().toString());
-  pb.autoCancellation(false);
-  await pb.collection('_superusers').authWithPassword(process.env.PB_ADMIN_EMAIL, process.env.PB_ADMIN_PASSWORD);
-  return pb;
+  if (!process.env.PB_ADMIN_EMAIL || !process.env.PB_ADMIN_PASSWORD) {
+    throw new Error('admin credentials are not configured');
+  }
+  const now = Date.now();
+  if (sharedAdmin && sharedAdmin.authStore.isValid && now - sharedAdminAt < 5 * 60 * 1000) {
+    return sharedAdmin;
+  }
+  if (sharedAdminPromise) return sharedAdminPromise;
+
+  sharedAdminPromise = (async () => {
+    const pb = new PocketBase(pocketBaseTarget().toString());
+    pb.autoCancellation(false);
+    await pb.collection('_superusers').authWithPassword(process.env.PB_ADMIN_EMAIL, process.env.PB_ADMIN_PASSWORD);
+    sharedAdmin = pb;
+    sharedAdminAt = Date.now();
+    return pb;
+  })();
+
+  try {
+    return await sharedAdminPromise;
+  } finally {
+    sharedAdminPromise = null;
+  }
 }
 
 async function loadBorrowlyStats(range = 'all') {
@@ -66,25 +101,14 @@ async function loadBorrowlyStats(range = 'all') {
   return computeAdminStats({ items, requests, range, now: new Date() });
 }
 
-let auditAdmin = null;
-let auditAdminAt = 0;
 async function writeProxyAudit(req, statusCode) {
   if (!process.env.PB_ADMIN_EMAIL || !process.env.PB_ADMIN_PASSWORD) return;
-  const url = process.env.POCKETBASE_URL || process.env.VITE_POCKETBASE_TARGET || 'http://127.0.0.1:8090';
   try {
-    if (!auditAdmin || !auditAdmin.authStore.isValid || Date.now() - auditAdminAt > 5 * 60 * 1000) {
-      auditAdmin = new PocketBase(url);
-      auditAdmin.autoCancellation(false);
-      await auditAdmin.collection('_superusers').authWithPassword(process.env.PB_ADMIN_EMAIL, process.env.PB_ADMIN_PASSWORD);
-      auditAdminAt = Date.now();
-    }
+    const auditAdmin = await adminPocketBase();
     let userId;
     const authorization = req.headers.authorization;
     if (authorization?.startsWith('Bearer ')) {
-      const user = new PocketBase(url);
-      user.autoCancellation(false);
-      user.authStore.save(authorization.slice(7));
-      try { userId = (await user.collection('users').authRefresh()).record?.id; } catch { /* anonymous or expired token */ }
+      userId = jwtUserId(authorization.slice(7));
     }
     const trustedProxy = process.env.TRUST_PROXY === 'true';
     const realIp = trustedProxy ? req.headers['x-real-ip'] : undefined;
@@ -118,7 +142,7 @@ function proxyPocketBase(req, res) {
   const target = pocketBaseTarget();
   const transport = target.protocol === 'https:' ? httpsRequest : httpRequest;
   const authPath = req.url.replace(/^\/api\/db(?=\/|$)/, '');
-  const captureAuth = req.method === 'POST' && /\/api\/collections\/users\/auth-with-password$/.test(authPath);
+  const captureAuth = req.method === 'POST' && /\/api\/collections\/users\/(auth-with-password|auth-refresh|auth-with-oauth2)(?:$|\?)/.test(authPath);
   const upstream = transport(upstreamOptions(req, target), (response) => {
     if (!captureAuth) {
       res.writeHead(response.statusCode || 502, response.headers);
@@ -135,8 +159,11 @@ function proxyPocketBase(req, res) {
         try {
           const payload = JSON.parse(body.toString('utf8'));
           if (payload.token) {
-            const secure = req.headers['x-forwarded-proto'] === 'https' || Boolean(req.socket.encrypted);
+            const secure = isSecureRequest(req);
             headers['set-cookie'] = sessionCookie(payload.token, secure);
+            if (payload.record) {
+              cacheSessionUser(payload.token, payload.record);
+            }
           }
         } catch { /* preserve PocketBase response */ }
       }
@@ -160,7 +187,8 @@ const server = createServer(async (req, res) => {
     return;
   }
   if (pathname === '/api/auth/logout') {
-    const secure = req.headers['x-forwarded-proto'] === 'https' || Boolean(req.socket.encrypted);
+    invalidateSessionUser(sessionToken(req));
+    const secure = isSecureRequest(req);
     res.writeHead(303, { Location: '/login', 'Set-Cookie': clearSessionCookie(secure) }).end();
     return;
   }
@@ -179,8 +207,11 @@ const server = createServer(async (req, res) => {
       pb.autoCancellation(false);
       pb.authStore.save(payload.token, payload.record);
       const authData = await pb.collection('users').authRefresh({ expand: 'user_type' });
-      const secure = req.headers['x-forwarded-proto'] === 'https' || Boolean(req.socket.encrypted);
-      jsonResponse(res, 200, { ok: true, record: authData.record }, { 'Set-Cookie': sessionCookie(authData.token || payload.token, secure) });
+      const activeToken = authData.token || payload.token;
+      cacheSessionUser(payload.token, authData.record);
+      cacheSessionUser(activeToken, authData.record);
+      const secure = isSecureRequest(req);
+      jsonResponse(res, 200, { ok: true, record: authData.record }, { 'Set-Cookie': sessionCookie(activeToken, secure) });
     } catch (error) {
       const status = Number(error?.status) >= 400 && Number(error?.status) < 500 ? Number(error.status) : 401;
       jsonResponse(res, status, { ok: false, error: 'authentication session could not be verified' });
@@ -234,8 +265,15 @@ const server = createServer(async (req, res) => {
     } catch {
       file = path.join(dist, 'index.html');
     }
+    const ext = path.extname(file);
     const contents = await readFile(file);
-    res.writeHead(200, { 'Content-Type': mimeTypes[path.extname(file)] || 'application/octet-stream' });
+    const headers = {
+      'Content-Type': mimeTypes[ext] || 'application/octet-stream'
+    };
+    if (ext === '.html') {
+      headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+    }
+    res.writeHead(200, headers);
     res.end(contents);
   } catch {
     res.writeHead(500).end('Server error');
