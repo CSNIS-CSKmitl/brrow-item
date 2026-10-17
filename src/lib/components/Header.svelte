@@ -77,7 +77,7 @@
   });
 </script>
 
-<header class="border-b border-[#e7e5df] bg-cream/90 backdrop-blur">
+<header class="relative z-50 border-b border-[#e7e5df] bg-cream/90 backdrop-blur">
   <div class="mx-auto max-w-7xl px-5 py-4 lg:px-8">
     <div class="flex items-center justify-between">
       <a class="flex items-center gap-3" href="/">
@@ -106,7 +106,7 @@
         </button>
 
         <!-- Profile Button & Option Menu -->
-        <div class="relative" bind:this={profileContainer}>
+        <div class="relative z-50" bind:this={profileContainer}>
           <button
             class="icon-btn {profileOpen ? 'border-sage ring-2 ring-sage/20' : ''}"
             aria-label="โปรไฟล์และตัวเลือกผู้ใช้งาน"
@@ -118,7 +118,7 @@
 
           {#if profileOpen}
             <div
-              class="absolute right-0 top-12 z-50 w-72 origin-top-right rounded-2xl border border-[#e2e5df] bg-white p-3 shadow-xl backdrop-blur-md"
+              class="absolute right-0 top-[calc(100%+0.75rem)] z-[100] w-72 origin-top-right rounded-2xl border border-[#e2e5df] bg-white p-3 shadow-xl backdrop-blur-md"
             >
               <!-- Profile Summary Card -->
               <div class="flex items-center gap-3 rounded-xl bg-[#f5f8f5] p-3 border border-[#e6eee6]">

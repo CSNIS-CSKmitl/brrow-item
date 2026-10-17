@@ -2,6 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { Trash2, Plus, Pencil, PackageOpen, Check, X, Download, Clock3, Package, FileSpreadsheet } from 'lucide-svelte';
   import Button from '../../lib/components/Button.svelte';
+  import AdminStats from '../../lib/components/AdminStats.svelte';
   import { items as mockItems } from '../../lib/mock-data.js';
   import { items, user, teachers } from '../../lib/stores.js';
   import { createItem, updateItem, deleteItem, getLoanRequests, updateLoanStatus, getUserType, pb } from '../../lib/pocketbase.js';
@@ -271,28 +272,7 @@
     </button>
   </div>
 
-  <section class="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-5" aria-label="สถิติระบบยืมของ">
-    <div class="rounded-2xl border border-[#dce8dd] bg-[#f4f8f4] p-4">
-      <p class="text-xs font-semibold text-[#68726b]">รายการของ</p>
-      <p class="mt-2 text-2xl font-bold text-ink">{itemCount}</p>
-    </div>
-    <div class="rounded-2xl border border-[#dce8dd] bg-[#f4f8f4] p-4">
-      <p class="text-xs font-semibold text-[#68726b]">ของพร้อมให้ยืม</p>
-      <p class="mt-2 text-2xl font-bold text-emerald-700">{availableUnits}<span class="ml-1 text-sm font-medium text-[#68726b]">/ {totalUnits}</span></p>
-    </div>
-    <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-      <p class="text-xs font-semibold text-amber-800">รออนุมัติ</p>
-      <p class="mt-2 text-2xl font-bold text-amber-900">{pendingCount}</p>
-    </div>
-    <div class="rounded-2xl border border-rose-200 bg-rose-50 p-4">
-      <p class="text-xs font-semibold text-rose-800">เกินกำหนดคืน</p>
-      <p class="mt-2 text-2xl font-bold text-rose-900">{overdueRequests.length}</p>
-    </div>
-    <div class="rounded-2xl border border-[#dce8dd] bg-white p-4">
-      <p class="text-xs font-semibold text-[#68726b]">ผู้ยืมที่มีคำขอ</p>
-      <p class="mt-2 text-2xl font-bold text-ink">{borrowerCount}</p>
-    </div>
-  </section>
+  <AdminStats {itemCount} {availableUnits} {totalUnits} {pendingCount} {overdueRequests} {borrowerCount} />
 
   <!-- Main Navigation Tabs -->
   <div class="mb-6 flex gap-3 border-b border-[#e4e5de] pb-3">
