@@ -19,14 +19,14 @@
   export let onLogout = () => {};
   export let canAdmin = false;
   export let canApprove = false;
+  export let path = '/';
 
   let menuOpen = false;
   let profileOpen = false;
   let showProfileModal = false;
   let profileContainer = null;
 
-  const currentPath = window.location.pathname.replace(/\/$/, '') || '/';
-  const activeClass = (path) => (currentPath === path ? 'text-ink font-bold' : 'text-[#68726b] hover:text-ink');
+  const activeClass = (target) => (path === target ? 'text-ink font-bold' : 'text-[#68726b] hover:text-ink');
 
   function roleTitle(type) {
     if (type === 'superadmin') return 'ผู้ดูแลระบบสูงสุด (Superadmin)';

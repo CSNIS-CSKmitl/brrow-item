@@ -24,12 +24,29 @@
     path = window.location.pathname.replace(/\/$/, "") || "/";
   }
 
+  function handleInternalNavigation(event) {
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const link = event.target instanceof Element ? event.target.closest("a[href]") : null;
+    if (!link || link.target || link.hasAttribute("download")) return;
+
+    const url = new URL(link.href, window.location.href);
+    if (url.origin !== window.location.origin) return;
+
+    event.preventDefault();
+    if (url.href === window.location.href) return;
+    window.history.pushState({}, "", url);
+    path = url.pathname.replace(/\/$/, "") || "/";
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }
+
   window.addEventListener("popstate", handlePopState);
+  document.addEventListener("click", handleInternalNavigation);
 
   loadAll();
 
   onDestroy(() => {
     window.removeEventListener("popstate", handlePopState);
+    document.removeEventListener("click", handleInternalNavigation);
     void stopRealtime();
   });
 </script>
@@ -46,6 +63,7 @@
       onLogout={handleLogout}
       canAdmin={$canAdmin}
       canApprove={$isTeacherOrAdmin}
+      {path}
     />
   {/if}
 
