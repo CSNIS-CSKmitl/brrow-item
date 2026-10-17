@@ -7,9 +7,24 @@ const pbUrl = '/api/db';
 export const pb = new PocketBase(pbUrl);
 pb.autoCancellation(false);
 
+async function establishServerSession(authData) {
+  const response = await fetch('/api/auth/session', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token: authData.token, record: authData.record })
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(result.error || 'ไม่สามารถสร้างเซสชันการเข้าสู่ระบบได้');
+  return result.record || authData.record;
+}
+
 export async function login(identity, password) {
   // PocketBase accepts either the username or email as the identity field.
-  return pb.collection('users').authWithPassword(identity.trim(), password);
+  const authData = await pb.collection('users').authWithPassword(identity.trim(), password);
+  const record = await establishServerSession(authData);
+  pb.authStore.save(authData.token, record);
+  return { ...authData, record };
 }
 
 export async function loginWithOIDC(authWindow) {
@@ -42,7 +57,9 @@ export async function loginWithOIDC(authWindow) {
 
   const record = result.record || authData.record;
   pb.authStore.save(authData.token, record);
-  return { ...authData, record };
+  const sessionRecord = await establishServerSession({ ...authData, record });
+  pb.authStore.save(authData.token, sessionRecord);
+  return { ...authData, record: sessionRecord };
 }
 
 export async function hydrateCurrentUser(authData = { token: pb.authStore.token, record: pb.authStore.record }) {

@@ -28,6 +28,26 @@ function pocketBaseTarget() {
   return new URL(process.env.POCKETBASE_URL || process.env.VITE_POCKETBASE_TARGET || 'http://127.0.0.1:8090');
 }
 
+async function readJsonBody(req) {
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of req) {
+    size += chunk.length;
+    if (size > 1024 * 1024) throw Object.assign(new Error('payload too large'), { status: 413 });
+    chunks.push(chunk);
+  }
+  try {
+    return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+  } catch {
+    throw Object.assign(new Error('invalid JSON payload'), { status: 400 });
+  }
+}
+
+function jsonResponse(res, status, body, headers = {}) {
+  res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...headers });
+  res.end(JSON.stringify(body));
+}
+
 let auditAdmin = null;
 let auditAdminAt = 0;
 async function writeProxyAudit(req, statusCode) {
@@ -124,6 +144,29 @@ const server = createServer(async (req, res) => {
   if (pathname === '/api/auth/logout') {
     const secure = req.headers['x-forwarded-proto'] === 'https' || Boolean(req.socket.encrypted);
     res.writeHead(303, { Location: '/login', 'Set-Cookie': clearSessionCookie(secure) }).end();
+    return;
+  }
+  if (pathname === '/api/auth/session') {
+    if (req.method !== 'POST') {
+      jsonResponse(res, 405, { ok: false, error: 'method not allowed' }, { Allow: 'POST' });
+      return;
+    }
+    try {
+      const payload = await readJsonBody(req);
+      if (!payload?.token || !payload?.record?.id) {
+        jsonResponse(res, 400, { ok: false, error: 'invalid authentication payload' });
+        return;
+      }
+      const pb = new PocketBase(pocketBaseTarget().toString());
+      pb.autoCancellation(false);
+      pb.authStore.save(payload.token, payload.record);
+      const authData = await pb.collection('users').authRefresh({ expand: 'user_type' });
+      const secure = req.headers['x-forwarded-proto'] === 'https' || Boolean(req.socket.encrypted);
+      jsonResponse(res, 200, { ok: true, record: authData.record }, { 'Set-Cookie': sessionCookie(authData.token || payload.token, secure) });
+    } catch (error) {
+      const status = Number(error?.status) >= 400 && Number(error?.status) < 500 ? Number(error.status) : 401;
+      jsonResponse(res, status, { ok: false, error: 'authentication session could not be verified' });
+    }
     return;
   }
   if (pathname === '/api/db' || pathname.startsWith('/api/db/')) {
