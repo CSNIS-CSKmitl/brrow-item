@@ -248,8 +248,15 @@ const server = createServer(async (req, res) => {
     const user = await getSessionUser(req);
     const allowed = user && (pathname.startsWith('/admin') ? user.role === 'superadmin' : pathname.startsWith('/approvals') ? ['teachers', 'admin', 'superadmin'].includes(user.role) : true);
     if (!allowed) {
-      res.writeHead(user ? 403 : 303, user ? { 'Content-Type': 'text/plain; charset=utf-8' } : { Location: `/login?redirect=${encodeURIComponent(pathname)}` }).end(user ? 'Forbidden' : undefined);
-      return;
+      // If the signed cookie is still valid, a failed PocketBase lookup can be
+      // transient (for example during a restart). Serve only the public SPA
+      // shell and let its auth guard retry. Protected APIs remain independently
+      // authorized, so no admin data is exposed by this fallback.
+      const recoverableSession = !user && Boolean(jwtUserId(sessionToken(req)));
+      if (!recoverableSession) {
+        res.writeHead(user ? 403 : 303, user ? { 'Content-Type': 'text/plain; charset=utf-8' } : { Location: `/login?redirect=${encodeURIComponent(pathname)}` }).end(user ? 'Forbidden' : undefined);
+        return;
+      }
     }
   }
 
