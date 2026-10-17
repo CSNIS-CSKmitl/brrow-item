@@ -126,15 +126,19 @@ async function writeProxyAudit(req, statusCode) {
   }
 }
 
-function upstreamOptions(req, target) {
+function upstreamOptions(req, target, captureAuth = false) {
   const pathname = req.url.replace(/^\/api\/db(?=\/|$)/, '') || '/';
+  const headers = { ...req.headers, host: target.host };
+  if (captureAuth) {
+    headers['accept-encoding'] = 'identity';
+  }
   return {
     protocol: target.protocol,
     hostname: target.hostname,
     port: target.port || undefined,
     method: req.method,
     path: pathname,
-    headers: { ...req.headers, host: target.host }
+    headers
   };
 }
 
@@ -143,7 +147,7 @@ function proxyPocketBase(req, res) {
   const transport = target.protocol === 'https:' ? httpsRequest : httpRequest;
   const authPath = req.url.replace(/^\/api\/db(?=\/|$)/, '');
   const captureAuth = req.method === 'POST' && /\/api\/collections\/users\/(auth-with-password|auth-refresh|auth-with-oauth2)(?:$|\?)/.test(authPath);
-  const upstream = transport(upstreamOptions(req, target), (response) => {
+  const upstream = transport(upstreamOptions(req, target, captureAuth), (response) => {
     if (!captureAuth) {
       res.writeHead(response.statusCode || 502, response.headers);
       void writeProxyAudit(req, response.statusCode || 502);
@@ -241,23 +245,6 @@ const server = createServer(async (req, res) => {
   if (pathname === '/api/db' || pathname.startsWith('/api/db/')) {
     proxyPocketBase(req, res);
     return;
-  }
-
-  const protectedPath = pathname === '/admin' || pathname.startsWith('/admin/') || pathname === '/approvals' || pathname.startsWith('/approvals/') || pathname === '/requests' || pathname.startsWith('/requests/');
-  if (protectedPath) {
-    const user = await getSessionUser(req);
-    const allowed = user && (pathname.startsWith('/admin') ? user.role === 'superadmin' : pathname.startsWith('/approvals') ? ['teachers', 'admin', 'superadmin'].includes(user.role) : true);
-    if (!allowed) {
-      // If the signed cookie is still valid, a failed PocketBase lookup can be
-      // transient (for example during a restart). Serve only the public SPA
-      // shell and let its auth guard retry. Protected APIs remain independently
-      // authorized, so no admin data is exposed by this fallback.
-      const recoverableSession = !user && Boolean(jwtUserId(sessionToken(req)));
-      if (!recoverableSession) {
-        res.writeHead(user ? 403 : 303, user ? { 'Content-Type': 'text/plain; charset=utf-8' } : { Location: `/login?redirect=${encodeURIComponent(pathname)}` }).end(user ? 'Forbidden' : undefined);
-        return;
-      }
-    }
   }
 
   try {

@@ -177,7 +177,7 @@
                 <label>อาจารย์ผู้รับทราบ
                   <select bind:value={editForm.teacher} required>
                     <option value="">เลือก อจ.</option>
-                    {#each teachers as teacher}
+                    {#each $teachers as teacher}
                       <option value={teacher.id}>{teacher.name || teacher.email}</option>
                     {/each}
                   </select>

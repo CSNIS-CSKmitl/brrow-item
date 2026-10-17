@@ -177,6 +177,18 @@ test('computeAdminStats handles empty data without errors or NaN', () => {
   assert.equal(stats.trend.length, 6);
 });
 
+test('computeAdminStats normalizes legacy inventory where available exceeds total', () => {
+  const stats = computeAdminStats({
+    items: [{ id: 'legacy', name: 'Legacy item', total: 0, available: 9 }],
+    requests: [],
+    range: 'all',
+    now: NOW,
+  });
+  assert.equal(stats.totalUnits, 9);
+  assert.equal(stats.availableUnits, 9);
+  assert.equal(stats.borrowedUnits, 0);
+});
+
 test('computeAdminStats calculates popular equipment, on-time return rate, overdue, and trend buckets', () => {
   const items = [
     { id: 'cam', name: 'กล้อง Olympus', total: 4, available: 2 },

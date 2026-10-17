@@ -294,8 +294,15 @@ export function computeAdminStats({ items = [], requests = [], range = 'all', no
   const safeRequests = Array.isArray(requests) ? requests : [];
   const ref = parseValidDate(now) || new Date();
 
-  const totalUnits = safeItems.reduce((sum, item) => sum + Math.max(0, Number(item?.total) || 0), 0);
-  const availableUnits = safeItems.reduce((sum, item) => sum + Math.max(0, Number(item?.available) || 0), 0);
+  // Legacy records can contain available > total. Treat available stock as the
+  // minimum credible total so dashboard percentages remain within 0..100.
+  const normalizedInventory = safeItems.map((item) => {
+    const available = Math.max(0, Number(item?.available) || 0);
+    const total = Math.max(0, Number(item?.total) || 0, available);
+    return { total, available: Math.min(available, total) };
+  });
+  const totalUnits = normalizedInventory.reduce((sum, item) => sum + item.total, 0);
+  const availableUnits = normalizedInventory.reduce((sum, item) => sum + item.available, 0);
   const inventoryBorrowedUnits = Math.max(0, totalUnits - availableUnits);
 
   const filteredRequests = filterRequestsByTimeRange(safeRequests, range, ref);

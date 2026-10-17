@@ -1,4 +1,4 @@
-import { writable, derived } from 'svelte/store';
+import { writable, derived, get } from 'svelte/store';
 import { items as mockItems } from './mock-data.js';
 import {
   pb,
@@ -19,8 +19,6 @@ const hasPb = Boolean(
 // Auth state
 export const user = writable(pb.authStore.record);
 // Distinguish "still restoring the session" from "confirmed signed out".
-// Route guards must wait for this flag or the login page flashes while
-// PocketBase refreshes an existing session.
 export const authReady = writable(false);
 export const userType = derived(user, ($user) => getUserType($user));
 export const canAdmin = derived(user, ($user) => isSuperadmin($user));
@@ -39,7 +37,7 @@ export const toastMessage = writable({ type: '', text: '' });
 
 let unsubscribeRealtime = null;
 let isRefreshingSession = false;
-let initializedUserId = pb.authStore.record?.id || null;
+let initializedUserId = null;
 let bootstrapPromise = null;
 
 export async function loadItems() {
@@ -121,11 +119,16 @@ export function handleLogout() {
   window.location.href = '/login';
 }
 
-export function loadAll() {
+export function loadAll({ force = false } = {}) {
   if (!pb.authStore.isValid) {
+    initializedUserId = null;
     user.set(null);
     authReady.set(true);
-    return;
+    return Promise.resolve();
+  }
+  const currentRecordId = pb.authStore.record?.id || null;
+  if (!force && get(authReady) && initializedUserId && currentRecordId === initializedUserId) {
+    return Promise.resolve();
   }
   if (!bootstrapPromise) {
     bootstrapPromise = refreshAndLoad().finally(() => {
@@ -145,7 +148,7 @@ async function refreshAndLoad() {
     });
     initializedUserId = authData?.record?.id || pb.authStore.record?.id || null;
     user.set(pb.authStore.record);
-    void establishServerSession({
+    await establishServerSession({
       token: pb.authStore.token,
       record: pb.authStore.record,
     }).catch(() => {});
@@ -161,6 +164,7 @@ async function refreshAndLoad() {
       return;
     }
     console.warn('Transient error refreshing Borrowly session; keeping current session', error);
+    initializedUserId = pb.authStore.record?.id || null;
   } finally {
     isRefreshingSession = false;
     authReady.set(true);
@@ -173,9 +177,6 @@ async function refreshAndLoad() {
   void startRealtime();
 }
 
-// Mirror authentication changes only. Login flows navigate to a fresh page,
-// whose single bootstrap performs authRefresh and data loading. Starting a new
-// bootstrap here can recurse because authRefresh itself updates authStore.
 pb.authStore.onChange(() => {
   const current = pb.authStore.record;
   user.update((prev) => {
@@ -190,5 +191,7 @@ pb.authStore.onChange(() => {
     void stopRealtime();
     return;
   }
-  initializedUserId = currentId;
+  if (initializedUserId && initializedUserId !== currentId) {
+    initializedUserId = null;
+  }
 });

@@ -1,4 +1,5 @@
-import { svelte } from '@sveltejs/vite-plugin-svelte';
+import adapter from '@sveltejs/adapter-static';
+import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig, loadEnv } from 'vite';
 import { completeOidc } from './server/oidc-complete.js';
 
@@ -13,7 +14,15 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [
-      svelte(),
+      sveltekit({
+        adapter: adapter({
+          pages: 'dist',
+          assets: 'dist',
+          fallback: 'index.html',
+          precompress: false,
+          strict: false
+        })
+      }),
       {
         name: 'oidc-completion-endpoint',
         configureServer(server) {

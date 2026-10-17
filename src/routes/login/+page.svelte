@@ -1,41 +1,27 @@
 <script>
-  import { onMount } from 'svelte';
+  import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
   import { ArrowRight, LockKeyhole, Package } from 'lucide-svelte';
   import Button from '../../lib/components/Button.svelte';
 
-  import { pb, login, loginWithOIDC, establishServerSession } from '../../lib/pocketbase.js';
+  import { login, loginWithOIDC } from '../../lib/pocketbase.js';
+  import { loadAll } from '../../lib/stores.js';
 
   let identity = '';
   let password = '';
   let error = '';
-  let restoringSession = Boolean(pb.authStore.isValid && pb.authStore.token && pb.authStore.record?.id);
 
   function getRedirectTarget() {
-    const params = new URLSearchParams(window.location.search);
-    const raw = params.get('redirect') || '/';
+    const raw = $page.url.searchParams.get('redirect') || '/';
     return raw.startsWith('/') && !raw.startsWith('//') && !raw.startsWith('/login') ? raw : '/';
   }
-
-  onMount(async () => {
-    if (!restoringSession) return;
-    try {
-      const record = await establishServerSession({
-        token: pb.authStore.token,
-        record: pb.authStore.record,
-      });
-      if (record) pb.authStore.save(pb.authStore.token, record);
-      window.location.replace(getRedirectTarget());
-    } catch {
-      // Token is no longer valid on the server; show login page
-      restoringSession = false;
-    }
-  });
 
   async function handleSubmit() {
     error = '';
     try {
       await login(identity, password);
-      window.location.href = getRedirectTarget();
+      await loadAll({ force: true });
+      await goto(getRedirectTarget(), { replaceState: true });
     } catch (e) {
       error = 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
     }
@@ -53,15 +39,14 @@
 
     try {
       await loginWithOIDC(authWindow);
-      window.location.href = getRedirectTarget();
+      await loadAll({ force: true });
+      await goto(getRedirectTarget(), { replaceState: true });
     } catch (e) {
       authWindow.close();
       error = e.message || 'ไม่สามารถเข้าสู่ระบบด้วย OIDC ได้';
     }
   }
 </script>
-
-{#if !restoringSession}
 <main class="grid min-h-[calc(100dvh-5rem)] place-items-center bg-[#f2f4ef] px-5 py-12">
   <div class="w-full max-w-md rounded-3xl border border-[#e1e5dd] bg-white p-8 shadow-soft">
     <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-sage text-white">
@@ -92,4 +77,3 @@
     </form>
   </div>
 </main>
-{/if}

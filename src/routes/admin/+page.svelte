@@ -666,6 +666,9 @@
             <div class="min-w-0 flex-1">
               <h3 class="font-bold text-ink">{item.name}</h3>
               <p class="mt-1 text-xs text-[#7c857e]">{item.category} · ว่าง {item.available}/{item.total} ชิ้น · {item.location || 'ไม่ระบุสถานที่'}</p>
+              {#if Number(item.available) > Number(item.total)}
+                <p class="mt-1 text-xs font-bold text-rose-700">ข้อมูลไม่ถูกต้อง: จำนวนว่างมากกว่าจำนวนทั้งหมด กรุณาแก้ไขรายการนี้</p>
+              {/if}
             </div>
             {#if getUserType($user) === 'superadmin'}
               <button
