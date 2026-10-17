@@ -64,6 +64,8 @@
       const payload = await response.json();
       if (payload?.stats) {
         serverStats = payload.stats;
+        lastUpdated = payload.stats.generatedAt || new Date().toISOString();
+        statsLoading = false;
         return { ok: true, stats: payload.stats };
       }
       return { ok: false };
@@ -76,6 +78,8 @@
     const result = await getLoanRequests();
     requests = result;
     hasLoadedRequests = true;
+    lastUpdated = new Date().toISOString();
+    statsLoading = false;
     return result;
   }
 
@@ -92,7 +96,7 @@
 
     if (!requestsOk && !apiOk) {
       statsError = 'ไม่สามารถโหลดข้อมูลสถิติและรายการคำขอได้ กรุณาตรวจสอบการเชื่อมต่อแล้วลองใหม่';
-    } else {
+    } else if (!lastUpdated) {
       lastUpdated = new Date().toISOString();
     }
     statsLoading = false;

@@ -7,7 +7,7 @@ const pbUrl = '/api/db';
 export const pb = new PocketBase(pbUrl);
 pb.autoCancellation(false);
 
-async function establishServerSession(authData) {
+export async function establishServerSession(authData) {
   const response = await fetch('/api/auth/session', {
     method: 'POST',
     credentials: 'same-origin',

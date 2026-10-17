@@ -1,18 +1,38 @@
 <script>
+  import { onMount } from 'svelte';
   import { ArrowRight, LockKeyhole, Package } from 'lucide-svelte';
   import Button from '../../lib/components/Button.svelte';
 
-  import { login, loginWithOIDC } from '../../lib/pocketbase.js';
+  import { pb, login, loginWithOIDC, establishServerSession } from '../../lib/pocketbase.js';
 
   let identity = '';
   let password = '';
   let error = '';
 
+  function getRedirectTarget() {
+    const params = new URLSearchParams(window.location.search);
+    const raw = params.get('redirect') || '/';
+    return raw.startsWith('/') && !raw.startsWith('//') && !raw.startsWith('/login') ? raw : '/';
+  }
+
+  onMount(async () => {
+    if (!pb.authStore.isValid || !pb.authStore.token || !pb.authStore.record?.id) return;
+    try {
+      await establishServerSession({
+        token: pb.authStore.token,
+        record: pb.authStore.record,
+      });
+      window.location.replace(getRedirectTarget());
+    } catch {
+      // Token is no longer valid on the server; stay on login page
+    }
+  });
+
   async function handleSubmit() {
     error = '';
     try {
       await login(identity, password);
-      window.location.href = '/';
+      window.location.href = getRedirectTarget();
     } catch (e) {
       error = 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
     }
@@ -30,7 +50,7 @@
 
     try {
       await loginWithOIDC(authWindow);
-      window.location.href = '/';
+      window.location.href = getRedirectTarget();
     } catch (e) {
       authWindow.close();
       error = e.message || 'ไม่สามารถเข้าสู่ระบบด้วย OIDC ได้';

@@ -7,6 +7,7 @@ import {
   getItems,
   getTeachers,
   createLoanRequest,
+  establishServerSession,
   logout as pbLogout,
 } from './pocketbase.js';
 
@@ -31,6 +32,8 @@ export const teachers = writable([]);
 export const toastMessage = writable({ type: '', text: '' });
 
 let unsubscribeRealtime = null;
+let isRefreshingSession = false;
+let initializedUserId = null;
 
 export async function loadItems() {
   try {
@@ -80,8 +83,7 @@ export async function submitLoan(form) {
 }
 
 export async function startRealtime() {
-  await stopRealtime();
-  if (!pb.authStore.isValid) return;
+  if (unsubscribeRealtime || !pb.authStore.isValid) return;
   try {
     unsubscribeRealtime = await pb.collection('loan_requests').subscribe('*', () => {
       // triggers realtime notifications
@@ -100,6 +102,7 @@ export async function stopRealtime() {
 }
 
 export function handleLogout() {
+  initializedUserId = null;
   stopRealtime();
   pbLogout();
   user.set(null);
@@ -112,21 +115,49 @@ export function loadAll() {
 }
 
 async function refreshAndLoad() {
+  if (isRefreshingSession) return;
+  isRefreshingSession = true;
   try {
-    await pb.collection('users').authRefresh();
+    const authData = await pb.collection('users').authRefresh({
+      expand: 'user_type',
+      requestKey: null,
+    });
+    initializedUserId = authData?.record?.id || pb.authStore.record?.id || null;
+    user.set(pb.authStore.record);
+    void establishServerSession({
+      token: pb.authStore.token,
+      record: pb.authStore.record,
+    }).catch(() => {});
   } catch (error) {
-    console.error('Refresh Borrowly session failed', error);
-    pb.authStore.clear();
-    user.set(null);
-    return;
+    const status = Number(error?.status || 0);
+    if (status === 401 || status === 403) {
+      console.error('Borrowly session expired or unauthorized', error);
+      initializedUserId = null;
+      pb.authStore.clear();
+      user.set(null);
+      isRefreshingSession = false;
+      return;
+    }
+    console.warn('Transient error refreshing Borrowly session; keeping current session', error);
+  } finally {
+    isRefreshingSession = false;
   }
   await Promise.all([loadItems(), loadTeachersList()]);
   void startRealtime();
 }
 
-// Subscribe to PocketBase auth changes
+// Subscribe to PocketBase auth changes without triggering recursive authRefresh loops
 pb.authStore.onChange(() => {
   const current = pb.authStore.record;
   user.set(current);
-  loadAll();
+  if (isRefreshingSession) return;
+  const currentId = current?.id || null;
+  if (!currentId) {
+    initializedUserId = null;
+    return;
+  }
+  if (currentId !== initializedUserId) {
+    initializedUserId = currentId;
+    loadAll();
+  }
 });
