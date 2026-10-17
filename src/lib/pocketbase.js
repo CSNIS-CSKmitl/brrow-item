@@ -62,6 +62,7 @@ export async function hydrateCurrentUser(authData = { token: pb.authStore.token,
 
 export function logout() {
   pb.authStore.clear();
+  void fetch('/api/auth/logout', { redirect: 'manual' }).catch(() => {});
 }
 
 export function isSuperadmin(record = pb.authStore.record) {

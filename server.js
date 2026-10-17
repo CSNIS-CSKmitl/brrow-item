@@ -6,6 +6,7 @@ import { loadEnv } from 'vite';
 import { fileURLToPath } from 'node:url';
 import PocketBase from 'pocketbase';
 import { completeOidc } from './server/oidc-complete.js';
+import { clearSessionCookie, getSessionUser, sessionCookie } from './server/session.js';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const dist = path.join(root, 'dist');
@@ -78,10 +79,33 @@ function upstreamOptions(req, target) {
 function proxyPocketBase(req, res) {
   const target = pocketBaseTarget();
   const transport = target.protocol === 'https:' ? httpsRequest : httpRequest;
+  const authPath = req.url.replace(/^\/api\/db(?=\/|$)/, '');
+  const captureAuth = req.method === 'POST' && /\/api\/collections\/users\/auth-with-password$/.test(authPath);
   const upstream = transport(upstreamOptions(req, target), (response) => {
-    res.writeHead(response.statusCode || 502, response.headers);
+    if (!captureAuth) {
+      res.writeHead(response.statusCode || 502, response.headers);
+      void writeProxyAudit(req, response.statusCode || 502);
+      response.pipe(res);
+      return;
+    }
+    const chunks = [];
+    response.on('data', (chunk) => chunks.push(chunk));
+    response.on('end', () => {
+      const body = Buffer.concat(chunks);
+      const headers = { ...response.headers };
+      if (response.statusCode && response.statusCode >= 200 && response.statusCode < 300) {
+        try {
+          const payload = JSON.parse(body.toString('utf8'));
+          if (payload.token) {
+            const secure = req.headers['x-forwarded-proto'] === 'https' || Boolean(req.socket.encrypted);
+            headers['set-cookie'] = sessionCookie(payload.token, secure);
+          }
+        } catch { /* preserve PocketBase response */ }
+      }
+      res.writeHead(response.statusCode || 502, headers);
+      res.end(body);
+    });
     void writeProxyAudit(req, response.statusCode || 502);
-    response.pipe(res);
   });
   upstream.on('error', (error) => {
     console.error('[proxy/pocketbase] request failed:', error.message);
@@ -97,9 +121,24 @@ const server = createServer(async (req, res) => {
     await completeOidc(req, res);
     return;
   }
+  if (pathname === '/api/auth/logout') {
+    const secure = req.headers['x-forwarded-proto'] === 'https' || Boolean(req.socket.encrypted);
+    res.writeHead(303, { Location: '/login', 'Set-Cookie': clearSessionCookie(secure) }).end();
+    return;
+  }
   if (pathname === '/api/db' || pathname.startsWith('/api/db/')) {
     proxyPocketBase(req, res);
     return;
+  }
+
+  const protectedPath = pathname === '/admin' || pathname.startsWith('/admin/') || pathname === '/approvals' || pathname.startsWith('/approvals/') || pathname === '/requests' || pathname.startsWith('/requests/');
+  if (protectedPath) {
+    const user = await getSessionUser(req);
+    const allowed = user && (pathname.startsWith('/admin') ? user.role === 'superadmin' : pathname.startsWith('/approvals') ? ['teachers', 'admin', 'superadmin'].includes(user.role) : true);
+    if (!allowed) {
+      res.writeHead(user ? 403 : 303, user ? { 'Content-Type': 'text/plain; charset=utf-8' } : { Location: `/login?redirect=${encodeURIComponent(pathname)}` }).end(user ? 'Forbidden' : undefined);
+      return;
+    }
   }
 
   try {

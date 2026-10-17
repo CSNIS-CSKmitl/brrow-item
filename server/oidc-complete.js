@@ -1,4 +1,5 @@
 import PocketBase from 'pocketbase';
+import { sessionCookie } from './session.js';
 
 const DEFAULT_USER_TYPE_ID = '000000000000001';
 const ROLE_MAP = {
@@ -32,10 +33,11 @@ async function readJson(req) {
   }
 }
 
-function respond(res, status, body) {
+function respond(res, status, body, extraHeaders = {}) {
   res.statusCode = status;
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store');
+  for (const [name, value] of Object.entries(extraHeaders)) res.setHeader(name, value);
   res.end(JSON.stringify(body));
 }
 
@@ -87,10 +89,10 @@ export async function completeOidc(req, res, env = process.env) {
       admin.autoCancellation(false);
       await admin.collection('_superusers').authWithPassword(env.PB_ADMIN_EMAIL, env.PB_ADMIN_PASSWORD);
       const updated = await admin.collection('users').update(record.id, { user_type: userTypeId });
-      return respond(res, 200, { ok: true, record: updated });
+      return respond(res, 200, { ok: true, record: updated }, { 'Set-Cookie': sessionCookie(authData.token, true) });
     }
 
-    return respond(res, 200, { ok: true, record });
+    return respond(res, 200, { ok: true, record }, { 'Set-Cookie': sessionCookie(authData.token, true) });
   } catch (error) {
     const status = Number(error?.status) || 500;
     if (status >= 500) console.error('[auth/oidc] completion failed:', error);
