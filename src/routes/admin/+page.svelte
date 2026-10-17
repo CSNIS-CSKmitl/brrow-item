@@ -1,13 +1,19 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
-  import { Trash2, Plus, Pencil, PackageOpen, Check, X, Download, Clock3, Package, FileSpreadsheet } from 'lucide-svelte';
+  import { Trash2, Plus, Pencil, PackageOpen, Check, X, Download, Clock3, Package, RotateCcw } from 'lucide-svelte';
   import Button from '../../lib/components/Button.svelte';
   import AdminStats from '../../lib/components/AdminStats.svelte';
   import { items as mockItems } from '../../lib/mock-data.js';
-  import { items, user, teachers } from '../../lib/stores.js';
-  import { createItem, updateItem, deleteItem, getLoanRequests, updateLoanStatus, getUserType, pb } from '../../lib/pocketbase.js';
+  import { items, user, teachers, loadItems } from '../../lib/stores.js';
+  import { createItem, updateItem, deleteItem, getLoanRequests, updateLoanStatus, markLoanReturned, getUserType, pb } from '../../lib/pocketbase.js';
   import { exportRequestsToCSV, exportSingleRequestToCSV, exportItemsToCSV, formatDateTime } from '../../lib/csv.js';
   import { getStatusBadgeClass, getStatusDotClass } from '../../lib/status.js';
+  import {
+    computeAdminStats,
+    filterRequestsByTimeRange,
+    filterRequestsByDrilldown,
+    isRequestOverdue,
+  } from '../../lib/admin-stats.js';
 
   // Main Tab: 'requests' | 'items'
   let activeMainTab = 'requests';
@@ -17,11 +23,20 @@
     pending_teacher: 'รอ อจ. รับทราบ',
     pending_caretaker: 'รอผู้ดูแลอนุมัติ',
     approved: 'อนุมัติแล้ว',
+    returned: 'คืนแล้ว',
     rejected: 'ไม่อนุมัติ',
   };
 
   let requests = [];
-  let requestFilter = 'pending'; // 'pending' | 'approved' | 'rejected' | 'all'
+  let requestFilter = 'pending'; // 'pending' | 'pending_all' | 'pending_teacher' | 'approved' | 'overdue' | 'returned' | 'rejected' | 'all'
+  let selectedRange = 'all'; // 'today' | '7d' | 'month' | 'year' | 'all'
+
+  // Stats Loading / Error / Freshness state
+  let statsLoading = true;
+  let statsError = '';
+  let lastUpdated = '';
+  let isRealtime = false;
+  let hasLoadedRequests = false;
 
   // Approve state with text
   let approvingId = '';
@@ -33,57 +48,118 @@
   let rejectComment = '';
   let rejectError = '';
 
+  // Return state
+  let returningId = '';
+  let returnError = '';
+
   let unsubRequests = null;
   let serverStats = null;
 
-  async function loadRequests() {
+  async function fetchServerStats(range = selectedRange) {
     try {
-      requests = await getLoanRequests();
-    } catch (e) {
-      requests = [];
+      const response = await fetch(`/api/admin/stats?range=${encodeURIComponent(range)}`, {
+        credentials: 'same-origin',
+      });
+      if (!response.ok) return { ok: false, status: response.status };
+      const payload = await response.json();
+      if (payload?.stats) {
+        serverStats = payload.stats;
+        return { ok: true, stats: payload.stats };
+      }
+      return { ok: false };
+    } catch {
+      return { ok: false };
     }
   }
 
-  onMount(async () => {
-    await loadRequests();
-    try {
-      const response = await fetch('/api/admin/stats', { credentials: 'same-origin' });
-      if (response.ok) serverStats = (await response.json()).stats || null;
-    } catch (e) {
-      serverStats = null;
+  async function loadRequests() {
+    const result = await getLoanRequests();
+    requests = result;
+    hasLoadedRequests = true;
+    return result;
+  }
+
+  async function refreshDashboardData(range = selectedRange) {
+    statsLoading = true;
+    statsError = '';
+    const [reqOutcome, statsOutcome] = await Promise.allSettled([
+      loadRequests(),
+      fetchServerStats(range),
+      loadItems(),
+    ]);
+    const requestsOk = reqOutcome.status === 'fulfilled';
+    const apiOk = statsOutcome.status === 'fulfilled' && statsOutcome.value?.ok;
+
+    if (!requestsOk && !apiOk) {
+      statsError = 'ไม่สามารถโหลดข้อมูลสถิติและรายการคำขอได้ กรุณาตรวจสอบการเชื่อมต่อแล้วลองใหม่';
+    } else {
+      lastUpdated = new Date().toISOString();
     }
+    statsLoading = false;
+  }
+
+  onMount(async () => {
+    await refreshDashboardData(selectedRange);
     try {
-      unsubRequests = await pb.collection('loan_requests').subscribe('*', () => {
-        void loadRequests();
+      unsubRequests = await pb.collection('loan_requests').subscribe('*', async () => {
+        try {
+          await loadRequests();
+          lastUpdated = new Date().toISOString();
+          statsError = '';
+        } catch {}
       });
-    } catch (e) {}
+      isRealtime = true;
+    } catch {
+      isRealtime = false;
+    }
   });
 
   onDestroy(() => {
     if (unsubRequests) unsubRequests();
   });
 
-  $: pendingTeacherRequests = requests.filter((r) => r.status === 'pending_teacher');
-  $: pendingRequests = requests.filter((r) => r.status === 'pending_caretaker');
-  $: approvedRequests = requests.filter((r) => r.status === 'approved');
-  $: rejectedRequests = requests.filter((r) => r.status === 'rejected');
-  $: totalUnits = serverStats?.totalUnits ?? $items.reduce((sum, item) => sum + Math.max(0, Number(item.total) || 0), 0);
-  $: availableUnits = serverStats?.availableUnits ?? $items.reduce((sum, item) => sum + Math.max(0, Number(item.available) || 0), 0);
-  $: overdueRequests = serverStats?.overdue ?? approvedRequests.filter((request) => request.dueDate && new Date(request.dueDate).getTime() < Date.now()).length;
-  $: borrowerCount = serverStats?.borrowers ?? new Set(requests.map((request) => request.email).filter(Boolean)).size;
-  $: itemCount = serverStats?.items ?? $items.length;
-  $: pendingCount = serverStats?.pending ?? pendingRequests.length + pendingTeacherRequests.length;
+  $: rangeRequests = filterRequestsByTimeRange(requests, selectedRange);
+  $: pendingTeacherRequests = rangeRequests.filter((r) => r.status === 'pending_teacher');
+  $: pendingRequests = rangeRequests.filter((r) => r.status === 'pending_caretaker');
+  $: approvedRequests = rangeRequests.filter((r) => r.status === 'approved');
+  $: overdueRequestsList = rangeRequests.filter((r) => isRequestOverdue(r));
+  $: returnedRequests = rangeRequests.filter((r) => r.status === 'returned');
+  $: rejectedRequests = rangeRequests.filter((r) => r.status === 'rejected');
 
-  $: filteredRequests =
-    requestFilter === 'pending'
-      ? pendingRequests
-      : requestFilter === 'pending_teacher'
-        ? pendingTeacherRequests
-        : requestFilter === 'approved'
-          ? approvedRequests
-          : requestFilter === 'rejected'
-            ? rejectedRequests
-            : requests;
+  $: localStats = computeAdminStats({
+    items: $items,
+    requests,
+    range: selectedRange,
+  });
+
+  $: activeStats = hasLoadedRequests ? localStats : serverStats || localStats;
+  $: totalUnits = activeStats.totalUnits;
+  $: availableUnits = activeStats.availableUnits;
+  $: borrowedUnits = activeStats.borrowedUnits;
+  $: currentlyBorrowed = activeStats.currentlyBorrowed;
+  $: overdueRequests = activeStats.overdue;
+  $: returnedCount = activeStats.returned;
+  $: totalRequestsCount = activeStats.totalRequests;
+  $: borrowerCount = activeStats.borrowers;
+  $: itemCount = activeStats.items;
+  $: pendingCount = activeStats.pending;
+  $: popularEquipment = activeStats.popularEquipment;
+  $: onTimeReturnRate = activeStats.onTimeReturnRate;
+  $: onTimeCount = activeStats.onTimeCount;
+  $: evaluatedReturnCount = activeStats.evaluatedReturnCount;
+  $: trendData = activeStats.trend || [];
+
+  $: filteredRequests = filterRequestsByDrilldown(rangeRequests, requestFilter);
+
+  function handleRangeChange(nextRange) {
+    selectedRange = nextRange;
+    void fetchServerStats(nextRange);
+  }
+
+  function handleDrilldown(filterKey) {
+    activeMainTab = 'requests';
+    requestFilter = filterKey;
+  }
 
   function itemName(id) {
     return $items.find((item) => item.id === id)?.name || mockItems.find((item) => item.id === id)?.name || id;
@@ -134,9 +210,25 @@
     try {
       await updateLoanStatus(request.id, 'approved', approveComment);
       await loadRequests();
+      lastUpdated = new Date().toISOString();
       cancelApprove();
     } catch (error) {
       approveError = error?.response?.message || 'บันทึกการอนุมัติไม่สำเร็จ';
+    }
+  }
+
+  // Return flow
+  async function handleReturnLoan(request) {
+    returnError = '';
+    returningId = request.id;
+    try {
+      await markLoanReturned(request.id);
+      await loadRequests();
+      lastUpdated = new Date().toISOString();
+    } catch (error) {
+      returnError = error?.response?.message || 'บันทึกการคืนของไม่สำเร็จ';
+    } finally {
+      returningId = '';
     }
   }
 
@@ -161,6 +253,7 @@
     try {
       await updateLoanStatus(request.id, 'rejected', rejectComment);
       await loadRequests();
+      lastUpdated = new Date().toISOString();
       cancelReject();
     } catch (error) {
       rejectError = error?.response?.message || 'บันทึกการไม่อนุมัติไม่สำเร็จ';
@@ -272,7 +365,38 @@
     </button>
   </div>
 
-  <AdminStats {itemCount} {availableUnits} {totalUnits} {pendingCount} {overdueRequests} {borrowerCount} />
+  <AdminStats
+    {itemCount}
+    {availableUnits}
+    {totalUnits}
+    {borrowedUnits}
+    {currentlyBorrowed}
+    {pendingCount}
+    {overdueRequests}
+    {returnedCount}
+    totalRequests={totalRequestsCount}
+    {borrowerCount}
+    {popularEquipment}
+    {onTimeReturnRate}
+    {onTimeCount}
+    {evaluatedReturnCount}
+    trend={trendData}
+    {selectedRange}
+    activeFilter={requestFilter}
+    loading={statsLoading}
+    error={statsError}
+    {lastUpdated}
+    {isRealtime}
+    onRangeChange={handleRangeChange}
+    onDrilldown={handleDrilldown}
+    onRefresh={() => refreshDashboardData(selectedRange)}
+  />
+
+  {#if returnError}
+    <div class="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-semibold text-rose-800">
+      {returnError}
+    </div>
+  {/if}
 
   <!-- Main Navigation Tabs -->
   <div class="mb-6 flex gap-3 border-b border-[#e4e5de] pb-3">
@@ -322,12 +446,38 @@
         รอ อจ. รับทราบ ({pendingTeacherRequests.length})
       </button>
 
+      {#if requestFilter === 'pending_all'}
+        <button
+          type="button"
+          class="rounded-lg px-3.5 py-1.5 text-xs font-bold transition bg-amber-700 text-white shadow-xs"
+          on:click={() => (requestFilter = 'pending_all')}
+        >
+          รออนุมัติทั้งหมด ({pendingCount})
+        </button>
+      {/if}
+
       <button
         type="button"
         class="rounded-lg px-3.5 py-1.5 text-xs font-bold transition {requestFilter === 'approved' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-[#f0f4ef] text-[#5e6960] hover:bg-[#e4ede3]'}"
         on:click={() => (requestFilter = 'approved')}
       >
-        อนุมัติแล้ว ({approvedRequests.length})
+        กำลังถูกยืม ({approvedRequests.length})
+      </button>
+
+      <button
+        type="button"
+        class="rounded-lg px-3.5 py-1.5 text-xs font-bold transition {requestFilter === 'overdue' ? 'bg-rose-700 text-white shadow-xs' : 'bg-[#f0f4ef] text-[#5e6960] hover:bg-[#e4ede3]'}"
+        on:click={() => (requestFilter = 'overdue')}
+      >
+        เกินกำหนดคืน ({overdueRequestsList.length})
+      </button>
+
+      <button
+        type="button"
+        class="rounded-lg px-3.5 py-1.5 text-xs font-bold transition {requestFilter === 'returned' ? 'bg-teal-600 text-white shadow-xs' : 'bg-[#f0f4ef] text-[#5e6960] hover:bg-[#e4ede3]'}"
+        on:click={() => (requestFilter = 'returned')}
+      >
+        คืนแล้ว ({returnedRequests.length})
       </button>
 
       <button
@@ -343,7 +493,7 @@
         class="rounded-lg px-3.5 py-1.5 text-xs font-bold transition {requestFilter === 'all' ? 'bg-[#3b453e] text-white shadow-xs' : 'bg-[#f0f4ef] text-[#5e6960] hover:bg-[#e4ede3]'}"
         on:click={() => (requestFilter = 'all')}
       >
-        ทั้งหมด ({requests.length})
+        ทั้งหมด ({rangeRequests.length})
       </button>
     </div>
 
@@ -366,6 +516,11 @@
                     <span class="h-1.5 w-1.5 rounded-full {getStatusDotClass(request.status)}"></span>
                     {statusLabel(request)}
                   </span>
+                  {#if isRequestOverdue(request)}
+                    <span class="inline-flex items-center rounded-full border border-rose-300 bg-rose-50 px-2.5 py-0.5 text-xs font-bold text-rose-800">
+                      เกินกำหนดคืน
+                    </span>
+                  {/if}
                 </div>
                 <button
                   type="button"
@@ -383,6 +538,11 @@
               <p class="text-sm text-[#778078]">
                 กำหนดเวลาคืน: <b class="text-ink">{formatDateTime(request.dueDate)}</b> · อีเมล: {request.email}
               </p>
+              {#if request.returnedAt}
+                <p class="text-sm text-teal-800">
+                  คืนของเมื่อ: <b>{formatDateTime(request.returnedAt)}</b>
+                </p>
+              {/if}
               <p class="text-sm text-[#778078] flex flex-wrap items-center gap-1.5">
                 <span>{teacherDisplay(request).label}:</span>
                 <span class="inline-flex items-center rounded-md bg-[#eef4ee] px-2.5 py-0.5 text-xs font-bold text-[#2d5236] border border-[#d3e3d4]">
@@ -432,6 +592,18 @@
                 </Button>
                 <Button size="sm" on:click={() => startApprove(request)}>
                   <Check size={15} /> อนุมัติ
+                </Button>
+              </div>
+            {:else if request.status === 'approved'}
+              <div class="flex flex-wrap gap-2 self-start">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={returningId === request.id}
+                  on:click={() => handleReturnLoan(request)}
+                >
+                  <RotateCcw size={15} />
+                  {returningId === request.id ? 'กำลังบันทึก...' : 'บันทึกคืนของ'}
                 </Button>
               </div>
             {/if}

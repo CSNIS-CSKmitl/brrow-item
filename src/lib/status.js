@@ -2,6 +2,7 @@ export const statusLabels = {
   pending_teacher: 'รอ อจ. รับทราบ',
   pending_caretaker: 'รอคนดูแลอนุมัติ',
   approved: 'อนุมัติแล้ว',
+  returned: 'คืนแล้ว',
   rejected: 'ไม่อนุมัติ',
 };
 
@@ -23,6 +24,9 @@ export function getStatusBadgeClass(status) {
     case 'approved':
       // Emerald Green (อนุมัติแล้ว)
       return 'bg-emerald-50 text-emerald-800 border border-emerald-300/90';
+    case 'returned':
+      // Teal / Slate (คืนแล้ว)
+      return 'bg-teal-50 text-teal-800 border border-teal-300/90';
     case 'rejected':
       // Rose Red (ไม่อนุมัติ)
       return 'bg-rose-50 text-rose-800 border border-rose-300/90';
@@ -39,6 +43,8 @@ export function getStatusDotClass(status) {
       return 'bg-blue-500';
     case 'approved':
       return 'bg-emerald-500';
+    case 'returned':
+      return 'bg-teal-500';
     case 'rejected':
       return 'bg-rose-500';
     default:

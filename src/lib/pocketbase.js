@@ -169,11 +169,18 @@ export async function updateLoanStatus(id, status, comment = '') {
     if (trimmed) {
       data.adminComment = trimmed;
     }
-    if (status === 'approved' || status === 'rejected') {
+    if (status === 'approved' || status === 'rejected' || status === 'returned') {
       if (user) data.caretaker = user;
+    }
+    if (status === 'returned') {
+      data.returnedAt = new Date().toISOString();
     }
   }
   return pb.collection('loan_requests').update(id, data, { expand: 'requester,teacher,caretaker' });
+}
+
+export async function markLoanReturned(id, comment = '') {
+  return updateLoanStatus(id, 'returned', comment);
 }
 
 export async function updateMyLoanRequest(id, { dueDate, note, teacher }) {

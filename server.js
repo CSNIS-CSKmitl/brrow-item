@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import PocketBase from 'pocketbase';
 import { completeOidc } from './server/oidc-complete.js';
 import { clearSessionCookie, getSessionUser, sessionCookie } from './server/session.js';
+import { computeAdminStats } from './src/lib/admin-stats.js';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const dist = path.join(root, 'dist');
@@ -56,25 +57,13 @@ async function adminPocketBase() {
   return pb;
 }
 
-async function loadBorrowlyStats() {
+async function loadBorrowlyStats(range = 'all') {
   const pb = await adminPocketBase();
   const [items, requests] = await Promise.all([
-    pb.collection('items').getFullList({ fields: 'id,total,available' }),
-    pb.collection('loan_requests').getFullList({ fields: 'id,status,dueDate,email' })
+    pb.collection('items').getFullList({ fields: 'id,name,category,total,available' }),
+    pb.collection('loan_requests').getFullList({ fields: 'id,status,dueDate,returnedAt,created,updated,email,itemIds,borrowerName' })
   ]);
-  const totalUnits = items.reduce((sum, item) => sum + Math.max(0, Number(item.total) || 0), 0);
-  const availableUnits = items.reduce((sum, item) => sum + Math.max(0, Number(item.available) || 0), 0);
-  const pending = requests.filter((request) => ['pending_teacher', 'pending_caretaker'].includes(request.status)).length;
-  const approved = requests.filter((request) => request.status === 'approved');
-  const overdue = approved.filter((request) => request.dueDate && new Date(request.dueDate).getTime() < Date.now()).length;
-  return {
-    items: items.length,
-    totalUnits,
-    availableUnits,
-    pending,
-    overdue,
-    borrowers: new Set(requests.map((request) => request.email).filter(Boolean)).size
-  };
+  return computeAdminStats({ items, requests, range, now: new Date() });
 }
 
 let auditAdmin = null;
@@ -209,7 +198,9 @@ const server = createServer(async (req, res) => {
       return;
     }
     try {
-      jsonResponse(res, 200, { ok: true, stats: await loadBorrowlyStats() });
+      const urlObj = new URL(req.url, 'http://localhost');
+      const range = urlObj.searchParams.get('range') || 'all';
+      jsonResponse(res, 200, { ok: true, stats: await loadBorrowlyStats(range) });
     } catch (error) {
       console.error('[admin/stats] failed:', error instanceof Error ? error.message : error);
       jsonResponse(res, 503, { ok: false, error: 'statistics are temporarily unavailable' });

@@ -24,6 +24,7 @@
     pending_teacher: 'รอ อจ. รับทราบ',
     pending_caretaker: 'รอผู้ดูแลตรวจสอบ',
     approved: 'อนุมัติแล้ว',
+    returned: 'คืนแล้ว',
     rejected: 'ไม่อนุมัติ'
   };
 
@@ -53,6 +54,7 @@
   }
 
   function stepIndex(status) {
+    if (status === 'returned') return steps.length;
     return steps.findIndex((step) => step.key === status);
   }
 

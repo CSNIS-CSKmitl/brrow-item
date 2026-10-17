@@ -1,10 +1,10 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
-  import { Check, Clock3, Download, Filter, History, ListFilter, X } from 'lucide-svelte';
+  import { Check, Clock3, Download, Filter, History, ListFilter, RotateCcw, X } from 'lucide-svelte';
   import Button from '../../lib/components/Button.svelte';
   import { items as mockItems } from '../../lib/mock-data.js';
   import { items, user, userType, teachers } from '../../lib/stores.js';
-  import { getLoanRequests, updateLoanStatus, pb } from '../../lib/pocketbase.js';
+  import { getLoanRequests, updateLoanStatus, markLoanReturned, pb } from '../../lib/pocketbase.js';
   import { exportRequestsToCSV, exportSingleRequestToCSV, formatDateTime } from '../../lib/csv.js';
   import { getStatusBadgeClass, getStatusDotClass } from '../../lib/status.js';
 
@@ -12,6 +12,7 @@
     pending_teacher: 'รอ อจ. รับทราบ',
     pending_caretaker: 'รอคนดูแลอนุมัติ',
     approved: 'อนุมัติแล้ว',
+    returned: 'คืนแล้ว',
     rejected: 'ไม่อนุมัติ',
   };
 
@@ -27,6 +28,7 @@
   let approvingId = '';
   let approveComment = '';
   let approveError = '';
+  let returningId = '';
 
   let unsub = null;
 
@@ -68,7 +70,7 @@
   $: historyRequests = requests.filter((r) =>
     $userType === 'teachers'
       ? r.status !== 'pending_teacher'
-      : r.status === 'approved' || r.status === 'rejected'
+      : r.status === 'approved' || r.status === 'returned' || r.status === 'rejected'
   );
 
   $: filteredRequests =
@@ -169,6 +171,18 @@
       cancelApprove();
     } catch (error) {
       approveError = error?.response?.message || 'บันทึกการอนุมัติไม่สำเร็จ';
+    }
+  }
+
+  async function handleReturnLoan(request) {
+    returningId = request.id;
+    try {
+      await markLoanReturned(request.id);
+      await loadApprovalRequests();
+    } catch (error) {
+      alert(error?.response?.message || 'บันทึกการคืนของไม่สำเร็จ');
+    } finally {
+      returningId = '';
     }
   }
 
@@ -301,6 +315,11 @@
             <p class="text-sm text-[#778078]">
               กำหนดเวลาคืน: <b class="text-ink">{formatDate(request.dueDate)}</b> · อีเมล: {request.email}
             </p>
+            {#if request.returnedAt}
+              <p class="text-sm text-teal-800">
+                คืนของเมื่อ: <b>{formatDate(request.returnedAt)}</b>
+              </p>
+            {/if}
             <p class="text-sm text-[#778078] flex flex-wrap items-center gap-1.5">
               <span>{teacherDisplay(request).label}:</span>
               <span class="inline-flex items-center rounded-md bg-[#eef4ee] px-2.5 py-0.5 text-xs font-bold text-[#2d5236] border border-[#d3e3d4]">
@@ -365,6 +384,18 @@
               </Button>
               <Button size="sm" on:click={() => startApprove(request)}>
                 <Check size={15} /> อนุมัติ
+              </Button>
+            </div>
+          {:else if $userType === 'superadmin' && request.status === 'approved'}
+            <div class="flex flex-wrap gap-2 self-start">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={returningId === request.id}
+                on:click={() => handleReturnLoan(request)}
+              >
+                <RotateCcw size={15} />
+                {returningId === request.id ? 'กำลังบันทึก...' : 'บันทึกคืนของ'}
               </Button>
             </div>
           {/if}

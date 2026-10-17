@@ -16,6 +16,7 @@ export function exportRequestsToCSV(requests, items = [], filename = 'loan_reque
     pending_teacher: 'รอ อจ. รับทราบ',
     pending_caretaker: 'รอผู้ดูแลอนุมัติ',
     approved: 'อนุมัติแล้ว',
+    returned: 'คืนแล้ว',
     rejected: 'ไม่อนุมัติ',
   };
 
