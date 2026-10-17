@@ -27,38 +27,16 @@
     rejected: 'ไม่อนุมัติ',
   };
 
-  const ADMIN_SNAPSHOT_KEY = 'borrowly_admin_snapshot_v1';
-
-  function readCachedSnapshot() {
-    if (typeof sessionStorage === 'undefined') return null;
-    try {
-      const raw = sessionStorage.getItem(ADMIN_SNAPSHOT_KEY);
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
-  }
-
-  function writeCachedSnapshot(patch) {
-    if (typeof sessionStorage === 'undefined') return;
-    try {
-      const prev = readCachedSnapshot() || {};
-      sessionStorage.setItem(ADMIN_SNAPSHOT_KEY, JSON.stringify({ ...prev, ...patch }));
-    } catch {}
-  }
-
-  const initialSnapshot = readCachedSnapshot();
-
-  let requests = Array.isArray(initialSnapshot?.requests) ? initialSnapshot.requests : [];
+  let requests = [];
   let requestFilter = 'pending'; // 'pending' | 'pending_all' | 'pending_teacher' | 'approved' | 'overdue' | 'returned' | 'rejected' | 'all'
   let selectedRange = 'all'; // 'today' | '7d' | 'month' | 'year' | 'all'
 
   // Stats Loading / Error / Freshness state
-  let statsLoading = !initialSnapshot?.lastUpdated;
+  let statsLoading = true;
   let statsError = '';
-  let lastUpdated = initialSnapshot?.lastUpdated || '';
+  let lastUpdated = '';
   let isRealtime = false;
-  let hasLoadedRequests = Array.isArray(initialSnapshot?.requests);
+  let hasLoadedRequests = false;
 
   // Approve state with text
   let approvingId = '';
@@ -75,59 +53,34 @@
   let returnError = '';
 
   let unsubRequests = null;
-  let serverStats = initialSnapshot?.serverStats || null;
-
-  async function fetchServerStats(range = selectedRange) {
-    try {
-      const response = await fetch(`/api/admin/stats?range=${encodeURIComponent(range)}`, {
-        credentials: 'same-origin',
-      });
-      if (!response.ok) return { ok: false, status: response.status };
-      const payload = await response.json();
-      if (payload?.stats) {
-        serverStats = payload.stats;
-        lastUpdated = payload.stats.generatedAt || new Date().toISOString();
-        statsLoading = false;
-        writeCachedSnapshot({ serverStats, lastUpdated });
-        return { ok: true, stats: payload.stats };
-      }
-      return { ok: false };
-    } catch {
-      return { ok: false };
-    }
-  }
-
   async function loadRequests() {
     const result = await getLoanRequests();
     requests = result;
     hasLoadedRequests = true;
     lastUpdated = new Date().toISOString();
-    statsLoading = false;
-    writeCachedSnapshot({ requests, lastUpdated });
     return result;
   }
 
-  async function refreshDashboardData(range = selectedRange) {
+  async function refreshDashboardData() {
     statsLoading = true;
     statsError = '';
-    const [reqOutcome, statsOutcome] = await Promise.allSettled([
+    const [reqOutcome, itemsOutcome] = await Promise.allSettled([
       loadRequests(),
-      fetchServerStats(range),
       loadItems(),
     ]);
     const requestsOk = reqOutcome.status === 'fulfilled';
-    const apiOk = statsOutcome.status === 'fulfilled' && statsOutcome.value?.ok;
+    const itemsOk = itemsOutcome.status === 'fulfilled';
 
-    if (!requestsOk && !apiOk && !hasLoadedRequests && !serverStats) {
+    if (!requestsOk && !itemsOk && !hasLoadedRequests) {
       statsError = 'ไม่สามารถโหลดข้อมูลสถิติและรายการคำขอได้ กรุณาตรวจสอบการเชื่อมต่อแล้วลองใหม่';
-    } else if (!lastUpdated) {
+    } else {
       lastUpdated = new Date().toISOString();
     }
     statsLoading = false;
   }
 
   onMount(async () => {
-    await refreshDashboardData(selectedRange);
+    await refreshDashboardData();
     try {
       unsubRequests = await pb.collection('loan_requests').subscribe('*', async () => {
         try {
@@ -160,7 +113,7 @@
     range: selectedRange,
   });
 
-  $: activeStats = hasLoadedRequests ? localStats : serverStats || localStats;
+  $: activeStats = localStats;
   $: totalUnits = activeStats.totalUnits;
   $: availableUnits = activeStats.availableUnits;
   $: borrowedUnits = activeStats.borrowedUnits;
@@ -181,7 +134,6 @@
 
   function handleRangeChange(nextRange) {
     selectedRange = nextRange;
-    void fetchServerStats(nextRange);
   }
 
   function handleDrilldown(filterKey) {
