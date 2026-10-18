@@ -16,6 +16,7 @@ import {
   sessionToken
 } from './server/session.js';
 import { computeAdminStats } from './server/admin-stats.js';
+import { resolveClientIp } from './server/client-ip.js';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const dist = path.join(root, 'dist');
@@ -101,7 +102,7 @@ async function loadBorrowlyStats(range = 'all') {
   return computeAdminStats({ items, requests, range, now: new Date() });
 }
 
-async function writeProxyAudit(req, statusCode) {
+async function writeServiceAudit(req, statusCode, action = req.method === 'GET' ? 'api_read' : 'api_write') {
   if (!process.env.PB_ADMIN_EMAIL || !process.env.PB_ADMIN_PASSWORD) return;
   try {
     const auditAdmin = await adminPocketBase();
@@ -110,16 +111,19 @@ async function writeProxyAudit(req, statusCode) {
     if (authorization?.startsWith('Bearer ')) {
       userId = jwtUserId(authorization.slice(7));
     }
-    const trustedProxy = process.env.TRUST_PROXY === 'true';
-    const realIp = trustedProxy ? req.headers['x-real-ip'] : undefined;
-    const forwarded = trustedProxy ? req.headers['x-forwarded-for'] : undefined;
-    const sourceIp = String(realIp || forwarded || req.socket.remoteAddress || '').split(',')[0].trim();
+    userId ||= jwtUserId(sessionToken(req));
+    const sourceIp = resolveClientIp({
+      headers: req.headers,
+      remoteAddress: req.socket.remoteAddress,
+      trustProxy: process.env.TRUST_PROXY === 'true'
+    });
     await auditAdmin.collection('service_access_logs').create({
       service: 'borrowly', user: userId || undefined, source_ip: sourceIp,
       method: req.method, path: new URL(req.url, 'http://localhost').pathname,
-      action: req.method === 'GET' ? 'api_read' : 'api_write', status_code: statusCode,
+      action, status_code: statusCode,
       user_agent: req.headers['user-agent'] || undefined,
-      request_id: req.headers['x-request-id'] || undefined, metadata: {}
+      request_id: req.headers['x-request-id'] || undefined,
+      metadata: { ip_version: sourceIp ? (sourceIp.includes(':') ? 6 : 4) : null }
     });
   } catch (error) {
     console.warn('[audit] Unable to store borrowly access log:', error instanceof Error ? error.message : error);
@@ -150,7 +154,7 @@ function proxyPocketBase(req, res) {
   const upstream = transport(upstreamOptions(req, target, captureAuth), (response) => {
     if (!captureAuth) {
       res.writeHead(response.statusCode || 502, response.headers);
-      void writeProxyAudit(req, response.statusCode || 502);
+      void writeServiceAudit(req, response.statusCode || 502);
       response.pipe(res);
       return;
     }
@@ -174,7 +178,7 @@ function proxyPocketBase(req, res) {
       res.writeHead(response.statusCode || 502, headers);
       res.end(body);
     });
-    void writeProxyAudit(req, response.statusCode || 502);
+    void writeServiceAudit(req, response.statusCode || 502);
   });
   upstream.on('error', (error) => {
     console.error('[proxy/pocketbase] request failed:', error.message);
@@ -269,6 +273,9 @@ const server = createServer(async (req, res) => {
     }
     res.writeHead(200, headers);
     res.end(contents);
+    if (ext === '.html' && req.method === 'GET') {
+      void writeServiceAudit(req, 200, 'page_view');
+    }
   } catch {
     res.writeHead(500).end('Server error');
   }
