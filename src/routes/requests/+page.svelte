@@ -146,18 +146,24 @@
 
           <div class="mt-4 rounded-xl bg-[#f5f7f3] p-4">
             <div class="space-y-2">
-              {#each request.itemIds || [] as itemId}
-                <p class="flex items-center gap-2 text-sm font-semibold text-ink"><span class="h-2 w-2 rounded-full bg-sage"></span>{itemName(itemId)}</p>
+              {#each (request.expand?.items || request.itemIds || []) as itemOrId}
+                <p class="flex items-center gap-2 text-sm font-semibold text-ink">
+                  <span class="h-2 w-2 rounded-full bg-sage"></span>
+                  {typeof itemOrId === 'object' && itemOrId?.name ? itemOrId.name : itemName(itemOrId)}
+                </p>
               {/each}
             </div>
             <p class="mt-3 text-sm text-[#778078]">อาจารย์ผู้รับทราบ: <b class="text-ink">{teacherName(request)}</b></p>
             <p class="mt-1 text-sm text-[#778078]">กำหนดเวลาคืน: <b class="text-ink">{formatDate(request.dueDate)}</b></p>
+            {#if request.approvedAt}
+              <p class="mt-1 text-sm text-emerald-800">อนุมัติเมื่อ: <b class="text-ink">{formatDate(request.approvedAt)}</b></p>
+            {/if}
             {#if request.note}<p class="mt-1 text-sm text-[#778078]">หมายเหตุ: {request.note}</p>{/if}
-            {#if request.adminComment && request.status !== 'rejected'}
+            {#if (request.asset_tags || request.adminComment) && request.status !== 'rejected'}
               <div class="mt-3 rounded-lg bg-[#eef7ee] border border-[#d3e5d3] p-3">
-                <span class="text-xs font-bold text-sage">หมายเลข MAC Address:</span>
+                <span class="text-xs font-bold text-sage">หมายเลขเครื่อง / MAC Address:</span>
                 <div class="mt-1 flex flex-wrap items-center gap-1.5">
-                  {#each (request.adminComment || '').split(',').map((s) => s.trim()).filter(Boolean) as mac}
+                  {#each (request.asset_tags || request.adminComment || '').split(',').map((s) => s.trim()).filter(Boolean) as mac}
                     <span class="inline-flex items-center font-mono text-xs font-bold bg-white border border-[#c6d7c7] px-2.5 py-1 rounded-md text-ink shadow-2xs">
                       {mac}
                     </span>

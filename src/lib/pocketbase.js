@@ -110,6 +110,7 @@ export async function createLoanRequest({ itemIds, borrowerName, email, dueDate,
   const isAdmin = isSuperadmin(currentUser);
 
   const request = {
+    items: itemIds,
     itemIds,
     borrowerName: currentUser?.name || borrowerName || currentUser?.email,
     email: currentUser?.email || email,
@@ -124,6 +125,7 @@ export async function createLoanRequest({ itemIds, borrowerName, email, dueDate,
 
   if (isAdmin) {
     request.caretaker = currentUser?.id;
+    request.approvedAt = new Date().toISOString();
   }
 
   return pb.collection('loan_requests').create(request);
@@ -139,7 +141,7 @@ export async function getLoanRequests(status = '', teacherId = null) {
   if (status) filters.push(`status = "${status}"`);
   if (teacherId) filters.push(`teacher = "${teacherId}"`);
   const filter = filters.join(' && ');
-  return pb.collection('loan_requests').getFullList({ filter, sort: '-created', expand: 'requester,teacher,caretaker', requestKey: null });
+  return pb.collection('loan_requests').getFullList({ filter, sort: '-created', expand: 'requester,teacher,caretaker,items', requestKey: null });
 }
 
 export async function getMyLoanRequests() {
@@ -148,7 +150,7 @@ export async function getMyLoanRequests() {
   return pb.collection('loan_requests').getFullList({
     filter: `requester = "${userId}"`,
     sort: '-created',
-    expand: 'requester,teacher,caretaker',
+    expand: 'requester,teacher,caretaker,items',
     requestKey: null
   });
 }
@@ -163,20 +165,63 @@ export async function updateLoanStatus(id, status, comment = '') {
     // ตอนรับทราบ (pending_caretaker) ไม่ต้องมีเหตุผล และกฎ PocketBase ไม่อนุญาตให้แก้ teacherComment
     if (status === 'rejected' && trimmed) {
       data.teacherComment = trimmed;
+      data.rejectedAt = new Date().toISOString();
     }
   } else {
     // Superadmin บันทึกหมายเลข MAC Address หรือข้อความตอนอนุมัติ/ปฏิเสธ
     if (trimmed) {
       data.adminComment = trimmed;
+      data.asset_tags = trimmed;
     }
     if (status === 'approved' || status === 'rejected' || status === 'returned') {
       if (user) data.caretaker = user;
+    }
+    if (status === 'approved') {
+      data.approvedAt = new Date().toISOString();
+    }
+    if (status === 'rejected') {
+      data.rejectedAt = new Date().toISOString();
     }
     if (status === 'returned') {
       data.returnedAt = new Date().toISOString();
     }
   }
-  return pb.collection('loan_requests').update(id, data, { expand: 'requester,teacher,caretaker' });
+
+  // Stock management for approved and returned status transitions
+  let previousRecord = null;
+  if (isSuperadmin() && (status === 'approved' || status === 'returned')) {
+    try {
+      previousRecord = await pb.collection('loan_requests').getOne(id);
+    } catch {}
+  }
+
+  const updatedRecord = await pb.collection('loan_requests').update(id, data, { expand: 'requester,teacher,caretaker,items' });
+
+  if (isSuperadmin() && previousRecord) {
+    const itemIdsToAdjust = Array.isArray(previousRecord.items) && previousRecord.items.length > 0
+      ? previousRecord.items
+      : (Array.isArray(previousRecord.itemIds) ? previousRecord.itemIds : []);
+
+    if (status === 'approved' && previousRecord.status !== 'approved') {
+      for (const itemId of itemIdsToAdjust) {
+        try {
+          const item = await pb.collection('items').getOne(itemId);
+          const nextAvail = Math.max(0, (Number(item.available) || 0) - 1);
+          await pb.collection('items').update(itemId, { available: nextAvail });
+        } catch {}
+      }
+    } else if (status === 'returned' && previousRecord.status !== 'returned') {
+      for (const itemId of itemIdsToAdjust) {
+        try {
+          const item = await pb.collection('items').getOne(itemId);
+          const nextAvail = Math.min(Number(item.total) || 1, (Number(item.available) || 0) + 1);
+          await pb.collection('items').update(itemId, { available: nextAvail });
+        } catch {}
+      }
+    }
+  }
+
+  return updatedRecord;
 }
 
 export async function markLoanReturned(id, comment = '') {

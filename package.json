@@ -10,7 +10,8 @@
     "prepare": "svelte-kit sync || echo ''",
     "start": "node server.js",
     "test": "node --test src/lib/admin-stats.test.js",
-    "setup:stats-db": "node --env-file-if-exists=.env scripts/setup-stats-db.mjs --apply"
+    "setup:stats-db": "node --env-file-if-exists=.env scripts/setup-stats-db.mjs --apply",
+    "refactor:db": "node --env-file-if-exists=.env scripts/refactor-db.mjs --apply"
   },
   "dependencies": {
     "@sveltejs/vite-plugin-svelte": "latest",

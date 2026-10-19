@@ -492,11 +492,16 @@
               </div>
 
               <p class="text-sm text-[#778078]">
-                ของที่ขอยืม: <b class="text-ink">{(request.itemIds || []).map(itemName).join(', ') || '-'}</b>
+                ของที่ขอยืม: <b class="text-ink">{(request.expand?.items ? request.expand.items.map((i) => i.name).join(', ') : (request.itemIds || []).map(itemName).join(', ')) || '-'}</b>
               </p>
               <p class="text-sm text-[#778078]">
                 กำหนดเวลาคืน: <b class="text-ink">{formatDateTime(request.dueDate)}</b> · อีเมล: {request.email}
               </p>
+              {#if request.approvedAt}
+                <p class="text-sm text-emerald-800">
+                  อนุมัติเมื่อ: <b>{formatDateTime(request.approvedAt)}</b>
+                </p>
+              {/if}
               {#if request.returnedAt}
                 <p class="text-sm text-teal-800">
                   คืนของเมื่อ: <b>{formatDateTime(request.returnedAt)}</b>
@@ -524,11 +529,11 @@
                   <b>ความเห็นจากอาจารย์:</b> {request.teacherComment}
                 </p>
               {/if}
-              {#if request.adminComment}
+              {#if (request.asset_tags || request.adminComment)}
                 <div class="rounded-lg bg-[#f4f7f4] border border-[#dbe7dc] px-3 py-2 text-sm text-[#355238]">
-                  <span class="text-xs font-bold text-sage">หมายเลข MAC Address:</span>
+                  <span class="text-xs font-bold text-sage">หมายเลขเครื่อง / MAC Address:</span>
                   <div class="mt-1 flex flex-wrap items-center gap-1.5">
-                    {#each (request.adminComment || '').split(',').map((s) => s.trim()).filter(Boolean) as mac}
+                    {#each (request.asset_tags || request.adminComment || '').split(',').map((s) => s.trim()).filter(Boolean) as mac}
                       <span class="inline-flex items-center font-mono text-xs font-bold bg-white border border-[#c6d7c7] px-2.5 py-1 rounded-md text-ink shadow-2xs">
                         {mac}
                       </span>
