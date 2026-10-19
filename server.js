@@ -102,6 +102,16 @@ async function loadBorrowlyStats(range = 'all') {
   return computeAdminStats({ items, requests, range, now: new Date() });
 }
 
+async function loadAnnouncements() {
+  const pb = await adminPocketBase();
+  const items = await pb.collection('announcements').getFullList({
+    filter: 'status = "published" && (targets ~ "all" || targets ~ "borrowly") && (start_at = "" || start_at <= @now) && (end_at = "" || end_at > @now)',
+    sort: 'priority,-updated',
+    fields: 'id,title,body,priority,revision,link_label,link_url,source_url,start_at,end_at'
+  });
+  return items;
+}
+
 async function writeServiceAudit(req, statusCode, action = req.method === 'GET' ? 'api_read' : 'api_write') {
   if (!process.env.PB_ADMIN_EMAIL || !process.env.PB_ADMIN_PASSWORD) return;
   try {
@@ -244,6 +254,29 @@ const server = createServer(async (req, res) => {
       console.error('[admin/stats] failed:', error instanceof Error ? error.message : error);
       jsonResponse(res, 503, { ok: false, error: 'statistics are temporarily unavailable' });
     }
+    return;
+  }
+  if (pathname === '/api/announcements') {
+    if (req.method === 'GET') {
+      try { jsonResponse(res, 200, { items: await loadAnnouncements(), configured: true }); }
+      catch (error) { console.error('[announcements] load failed:', error instanceof Error ? error.message : error); jsonResponse(res, 200, { items: [], configured: false }); }
+      return;
+    }
+    if (req.method === 'POST') {
+      try {
+        const payload = await readJsonBody(req);
+        const announcement = String(payload?.announcement || payload?.id || '').trim();
+        if (!/^[a-zA-Z0-9_-]{1,32}$/.test(announcement)) { jsonResponse(res, 200, { ok: true, recorded: false }); return; }
+        const user = await getSessionUser(req).catch(() => null);
+        const source = `${user?.id || resolveClientIp({ headers: req.headers, remoteAddress: req.socket.remoteAddress, trustProxy: process.env.TRUST_PROXY === 'true' })}:${req.headers['user-agent'] || 'unknown'}`;
+        const viewer_hash = (await import('node:crypto')).createHash('sha256').update(source).digest('hex');
+        const pb = await adminPocketBase();
+        await pb.collection('announcement_reads').create({ announcement, revision: String(payload?.revision || 'default').slice(0, 100), site: 'borrowly', ...(user?.id ? { user: user.id } : {}), viewer_hash });
+        jsonResponse(res, 200, { ok: true, recorded: true });
+      } catch (error) { console.warn('[announcements] read tracking failed:', error instanceof Error ? error.message : error); jsonResponse(res, 200, { ok: true, recorded: false }); }
+      return;
+    }
+    jsonResponse(res, 405, { ok: false, error: 'method not allowed' }, { Allow: 'GET, POST' });
     return;
   }
   if (pathname === '/api/db' || pathname.startsWith('/api/db/')) {
