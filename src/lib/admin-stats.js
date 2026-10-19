@@ -312,7 +312,7 @@ export function computeAdminStats({ items = [], requests = [], range = 'all', no
   const approvedList = filteredRequests.filter((r) => r?.status === 'approved');
   const activeLoans = approvedList.length;
   const activeBorrowedItemsCount = approvedList.reduce(
-    (sum, r) => sum + (Array.isArray(r?.itemIds) ? r.itemIds.length : 0),
+    (sum, r) => sum + (Array.isArray(r?.items) && r.items.length > 0 ? r.items.length : (Array.isArray(r?.itemIds) ? r.itemIds.length : 0)),
     0
   );
   const currentlyBorrowed = activeLoans;
@@ -347,7 +347,7 @@ export function computeAdminStats({ items = [], requests = [], range = 'all', no
   const itemBorrowCounts = new Map();
   for (const req of filteredRequests) {
     if (!req || req.status === 'rejected') continue;
-    const ids = Array.isArray(req.itemIds) ? req.itemIds : [];
+    const ids = Array.isArray(req.items) && req.items.length > 0 ? req.items : (Array.isArray(req.itemIds) ? req.itemIds : []);
     for (const rawId of ids) {
       const id = String(rawId || '').trim();
       if (!id) continue;

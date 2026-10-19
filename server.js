@@ -97,7 +97,7 @@ async function loadBorrowlyStats(range = 'all') {
   const pb = await adminPocketBase();
   const [items, requests] = await Promise.all([
     pb.collection('items').getFullList({ fields: 'id,name,category,total,available' }),
-    pb.collection('loan_requests').getFullList({ fields: 'id,status,dueDate,returnedAt,created,updated,email,itemIds,borrowerName' })
+    pb.collection('loan_requests').getFullList({ fields: 'id,status,dueDate,returnedAt,approvedAt,created,updated,email,items,asset_tags,adminComment,borrowerName' })
   ]);
   return computeAdminStats({ items, requests, range, now: new Date() });
 }

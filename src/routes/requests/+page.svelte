@@ -146,7 +146,7 @@
 
           <div class="mt-4 rounded-xl bg-[#f5f7f3] p-4">
             <div class="space-y-2">
-              {#each (request.expand?.items || request.itemIds || []) as itemOrId}
+              {#each (request.expand?.items || request.items || []) as itemOrId}
                 <p class="flex items-center gap-2 text-sm font-semibold text-ink">
                   <span class="h-2 w-2 rounded-full bg-sage"></span>
                   {typeof itemOrId === 'object' && itemOrId?.name ? itemOrId.name : itemName(itemOrId)}

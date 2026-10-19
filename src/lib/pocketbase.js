@@ -104,14 +104,13 @@ export async function getItems() {
   return pb.collection('items').getFullList({ sort: '-created', requestKey: null });
 }
 
-export async function createLoanRequest({ itemIds, borrowerName, email, dueDate, note, teacher }) {
+export async function createLoanRequest({ itemIds, items, borrowerName, email, dueDate, note, teacher }) {
   const currentUser = pb.authStore.record;
   const isTeacher = getUserType(currentUser) === 'teachers';
   const isAdmin = isSuperadmin(currentUser);
 
   const request = {
-    items: itemIds,
-    itemIds,
+    items: items || itemIds,
     borrowerName: currentUser?.name || borrowerName || currentUser?.email,
     email: currentUser?.email || email,
     dueDate,

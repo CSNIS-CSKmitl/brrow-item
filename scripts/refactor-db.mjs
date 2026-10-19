@@ -1,6 +1,7 @@
 import PocketBase from 'pocketbase';
 
 const apply = process.argv.includes('--apply');
+const dropLegacy = process.argv.includes('--drop-legacy');
 const targetUrl = process.env.POCKETBASE_URL || process.env.VITE_POCKETBASE_TARGET || 'http://127.0.0.1:8090';
 const adminEmail = process.env.PB_ADMIN_EMAIL;
 const adminPassword = process.env.PB_ADMIN_PASSWORD;
@@ -33,9 +34,35 @@ for (const item of allItems) {
   }
 }
 
-// 2. Update loan_requests collection schema
+// 2. Migrate records first to ensure 100% data integrity before touching schema
+const allRequests = await pb.collection('loan_requests').getFullList();
+console.log(`\n--- Verifying/Migrating ${allRequests.length} loan_requests ---`);
+for (const req of allRequests) {
+  const patch = {};
+  if ((!Array.isArray(req.items) || req.items.length === 0) && Array.isArray(req.itemIds) && req.itemIds.length > 0) {
+    patch.items = req.itemIds;
+  }
+  if (req.status === 'approved' && !req.approvedAt) {
+    patch.approvedAt = req.updated || req.created;
+  }
+  if (req.adminComment && !req.asset_tags) {
+    patch.asset_tags = req.adminComment;
+  }
+
+  if (Object.keys(patch).length > 0) {
+    console.log(`[Record Migration] Request ${req.id} (${req.borrowerName}): patching ${JSON.stringify(patch)}`);
+    if (apply) {
+      await pb.collection('loan_requests').update(req.id, patch);
+      console.log(`  -> Migrated request ${req.id}`);
+    }
+  } else {
+    console.log(`[Record OK] Request ${req.id} (${req.borrowerName}) has items relation and fields populated`);
+  }
+}
+
+// 3. Update loan_requests collection schema
 const loanReqCol = await pb.collections.getOne('loan_requests');
-const fields = structuredClone(loanReqCol.fields);
+let fields = structuredClone(loanReqCol.fields);
 let schemaChanged = false;
 
 // Check 'items' relation field
@@ -77,10 +104,31 @@ if (!approvedAtField) {
   console.log('[Schema] Adding "approvedAt" (date) field');
 }
 
+// If --drop-legacy is requested, drop legacy 'itemIds'
+if (dropLegacy) {
+  const itemIdsIndex = fields.findIndex((f) => f.name === 'itemIds');
+  if (itemIdsIndex !== -1) {
+    fields.splice(itemIdsIndex, 1);
+    schemaChanged = true;
+    console.log('[Schema] Dropping legacy "itemIds" (json) field');
+  }
+}
+
 // Check updateRule
 let updateRule = loanReqCol.updateRule || '';
-if (!updateRule.includes('@request.body.items:changed = false')) {
-  // Ensure requester and teacher cannot modify the new items relation
+if (dropLegacy) {
+  // Strip itemIds:changed from updateRule completely
+  updateRule = updateRule.replaceAll('@request.body.itemIds:changed = false && ', '');
+  updateRule = updateRule.replaceAll(' && @request.body.itemIds:changed = false', '');
+  if (!updateRule.includes('@request.body.items:changed = false')) {
+    updateRule = updateRule.replaceAll(
+      'status = "pending_teacher"',
+      'status = "pending_teacher" && @request.body.items:changed = false'
+    );
+  }
+  schemaChanged = true;
+  console.log('[Schema] Cleaned updateRule to use only "items:changed = false"');
+} else if (!updateRule.includes('@request.body.items:changed = false')) {
   updateRule = updateRule.replaceAll(
     '@request.body.itemIds:changed = false',
     '@request.body.itemIds:changed = false && @request.body.items:changed = false'
@@ -98,35 +146,6 @@ if (schemaChanged) {
   }
 } else {
   console.log('[Schema] loan_requests schema is already up to date');
-}
-
-// 3. Migrate existing records in loan_requests
-const allRequests = await pb.collection('loan_requests').getFullList();
-console.log(`\n--- Migrating ${allRequests.length} loan_requests ---`);
-for (const req of allRequests) {
-  const patch = {};
-  // If items relation is empty but itemIds has values, populate items
-  if ((!Array.isArray(req.items) || req.items.length === 0) && Array.isArray(req.itemIds) && req.itemIds.length > 0) {
-    patch.items = req.itemIds;
-  }
-  // If approved and approvedAt is empty, set from updated timestamp
-  if (req.status === 'approved' && !req.approvedAt) {
-    patch.approvedAt = req.updated || req.created;
-  }
-  // If adminComment has MAC/serial content and asset_tags is empty, populate asset_tags
-  if (req.adminComment && !req.asset_tags) {
-    patch.asset_tags = req.adminComment;
-  }
-
-  if (Object.keys(patch).length > 0) {
-    console.log(`[Record Migration] Request ${req.id} (${req.borrowerName}): patching ${JSON.stringify(patch)}`);
-    if (apply) {
-      await pb.collection('loan_requests').update(req.id, patch);
-      console.log(`  -> Migrated request ${req.id}`);
-    }
-  } else {
-    console.log(`[Record OK] Request ${req.id} (${req.borrowerName}) already migrated`);
-  }
 }
 
 console.log(`\n=== Migration ${apply ? 'COMPLETE' : 'DRY RUN FINISHED (use --apply to execute)'} ===`);

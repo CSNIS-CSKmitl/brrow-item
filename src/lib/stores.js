@@ -76,9 +76,11 @@ export async function submitLoan(form) {
   selectedItems.subscribe((val) => (selected = val))();
 
   try {
+    const ids = selected.map((i) => i.id);
     await createLoanRequest({
       ...form,
-      itemIds: selected.map((i) => i.id),
+      itemIds: ids,
+      items: ids,
     });
     selectedItems.set([]);
     panelOpen.set(false);

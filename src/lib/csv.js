@@ -52,15 +52,20 @@ export function exportRequestsToCSV(requests, items = [], filename = 'loan_reque
 
   const rows = [];
   for (const req of requests) {
-    const macs = parseMacList(req.adminComment);
-    const firstMac = macs.length > 0 ? macs[0] : (req.adminComment || '');
+    const rawTags = req.asset_tags || req.adminComment || '';
+    const macs = parseMacList(rawTags);
+    const firstMac = macs.length > 0 ? macs[0] : rawTags;
+
+    const itemNames = req.expand?.items
+      ? req.expand.items.map((i) => i.name).join(', ')
+      : (req.items || req.itemIds || []).map(getItemName).join(', ');
 
     // แถวแรกของคำขอ: ข้อมูลของคำขอครบถ้วน และ MAC แรก
     rows.push([
       req.id,
       req.borrowerName || '',
       req.email || '',
-      (req.itemIds || []).map(getItemName).join(', '),
+      itemNames,
       formatDateTime(req.created),
       formatDateTime(req.dueDate),
       req.expand?.teacher?.name || req.expand?.teacher?.email || '',

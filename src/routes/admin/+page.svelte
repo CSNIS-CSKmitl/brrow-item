@@ -492,7 +492,7 @@
               </div>
 
               <p class="text-sm text-[#778078]">
-                ของที่ขอยืม: <b class="text-ink">{(request.expand?.items ? request.expand.items.map((i) => i.name).join(', ') : (request.itemIds || []).map(itemName).join(', ')) || '-'}</b>
+                ของที่ขอยืม: <b class="text-ink">{(request.expand?.items ? request.expand.items.map((i) => i.name).join(', ') : (request.items || request.itemIds || []).map(itemName).join(', ')) || '-'}</b>
               </p>
               <p class="text-sm text-[#778078]">
                 กำหนดเวลาคืน: <b class="text-ink">{formatDateTime(request.dueDate)}</b> · อีเมล: {request.email}
