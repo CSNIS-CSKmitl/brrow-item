@@ -1,0 +1,6 @@
+<script>
+ import { onMount } from 'svelte'; let items = $state([]); let index = $state(0); let open = $state(false);
+ onMount(() => { fetch('/api/announcements').then(r=>r.json()).then(x=>{items=x.items||[];open=items.length>0}).catch(()=>{}); });
+ function mark(){const x=items[index]; if(!x)return; void fetch('/api/announcements',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({announcement:x.id,revision:x.revision})}); index++; if(index>=items.length)open=false;}
+</script>
+{#if open && items[index]}<aside class="fixed right-4 top-4 z-50 w-[min(24rem,calc(100vw-2rem))] rounded-xl border bg-white p-5 text-slate-900 shadow-2xl" role="alert"><div class="flex justify-between"><strong>ประกาศ</strong><button onclick={mark} aria-label="ปิด">×</button></div><h2 class="mt-2 text-lg font-semibold">{items[index].title}</h2><p class="mt-2 whitespace-pre-wrap text-sm">{items[index].body}</p>{#if items[index].link_url}<a class="mt-3 inline-block underline" href={items[index].link_url} target="_blank" rel="noreferrer">{items[index].link_label||'อ่านเพิ่มเติม'}</a>{/if}<button class="mt-4 w-full rounded-lg bg-slate-900 px-3 py-2 text-white" onclick={mark}>รับทราบ</button></aside>{/if}

@@ -5,6 +5,7 @@
   import Header from '../lib/components/Header.svelte';
   import LoanPanel from '../lib/components/LoanPanel.svelte';
   import LegalConsent from '../lib/components/LegalConsent.svelte';
+  import AnnouncementCenter from '../lib/components/AnnouncementCenter.svelte';
   import UnauthorizedPage from '../lib/components/UnauthorizedPage.svelte';
   import {
     user,
@@ -31,6 +32,7 @@
 <svelte:head>
   <title>Borrowly — ยืมของได้ง่าย ๆ</title>
 </svelte:head>
+<AnnouncementCenter />
 
 <div class="flex min-h-screen flex-col">
   {#if $user && path !== '/login'}
