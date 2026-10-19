@@ -1,6 +1,6 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
-  import { Check, Clock3, Download, Pencil, X } from 'lucide-svelte';
+  import { Check, Download, Pencil, X } from 'lucide-svelte';
   import { items as mockItems } from '../../lib/mock-data.js';
   import Button from '../../lib/components/Button.svelte';
   import { items, teachers, userType } from '../../lib/stores.js';
@@ -106,9 +106,7 @@
 
 <main class="mx-auto max-w-5xl px-5 py-12 lg:px-8">
   <div class="mb-8">
-    <p class="eyebrow"><Clock3 size={14}/> MY LOAN REQUESTS</p>
-    <h1 class="mt-2 text-3xl font-bold text-ink">คำขอยืม</h1>
-    <p class="mt-2 text-sm text-[#7c857e]">ดูของที่ขอยืม อาจารย์ผู้รับทราบ และสถานะของคำขอได้ในหน้าเดียว</p>
+    <h1 class="text-3xl font-bold text-ink">คำขอยืม</h1>
   </div>
 
   {#if requests.length === 0}
