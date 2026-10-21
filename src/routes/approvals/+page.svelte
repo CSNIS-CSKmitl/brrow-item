@@ -4,7 +4,7 @@
   import Button from '../../lib/components/Button.svelte';
   import { items as mockItems } from '../../lib/mock-data.js';
   import { items, user, userType, teachers } from '../../lib/stores.js';
-  import { getLoanRequests, updateLoanStatus, markLoanReturned, pb } from '../../lib/pocketbase.js';
+  import { getLoanRequests, updateLoanStatus, updateLoanQuantities, markLoanReturned, pb } from '../../lib/pocketbase.js';
   import { exportRequestsToCSV, exportSingleRequestToCSV, formatDateTime } from '../../lib/csv.js';
   import { getStatusBadgeClass, getStatusDotClass } from '../../lib/status.js';
 
@@ -14,6 +14,7 @@
     approved: 'อนุมัติแล้ว',
     returned: 'คืนแล้ว',
     rejected: 'ไม่อนุมัติ',
+    cancelled: 'ยกเลิกแล้ว',
   };
 
   let requests = [];
@@ -29,6 +30,10 @@
   let approveComment = '';
   let approveError = '';
   let returningId = '';
+  let editingQuantitiesId = '';
+  let editQuantities = {};
+  let quantityError = '';
+  let savingQuantities = false;
 
   let unsub = null;
 
@@ -70,7 +75,7 @@
   $: historyRequests = requests.filter((r) =>
     $userType === 'teachers'
       ? r.status !== 'pending_teacher'
-      : r.status === 'approved' || r.status === 'returned' || r.status === 'rejected'
+      : r.status === 'approved' || r.status === 'returned' || r.status === 'rejected' || r.status === 'cancelled'
   );
 
   $: filteredRequests =
@@ -112,6 +117,46 @@
       label: isTeacherSelf ? 'อาจารย์ผู้ขอยืม' : 'อาจารย์ผู้รับทราบ / ขออนุมัติ',
       name: teacherName(request),
     };
+  }
+
+  function requestItems(request) {
+    return request.expand?.items || request.items || request.itemIds || [];
+  }
+
+  function requestQuantity(request, itemOrId) {
+    const id = typeof itemOrId === 'object' ? itemOrId.id : itemOrId;
+    return Math.max(1, Number(request.quantities?.[id]) || 1);
+  }
+
+  function startQuantityEditing(request) {
+    editingQuantitiesId = request.id;
+    quantityError = '';
+    editQuantities = Object.fromEntries(requestItems(request).map((item) => [typeof item === 'object' ? item.id : item, requestQuantity(request, item)]));
+  }
+
+  async function saveQuantityEditing(request) {
+    quantityError = '';
+    savingQuantities = true;
+    try {
+      const normalized = Object.fromEntries(Object.entries(editQuantities).map(([id, value]) => [id, Math.max(1, Number(value) || 1)]));
+      await updateLoanQuantities(request.id, normalized);
+      await loadApprovalRequests();
+      editingQuantitiesId = '';
+    } catch (error) {
+      quantityError = error?.response?.message || 'บันทึกจำนวนไม่สำเร็จ';
+    } finally {
+      savingQuantities = false;
+    }
+  }
+
+  async function cancelPendingRequest(request) {
+    if (!window.confirm('ยืนยันยกเลิกคำขอนี้หรือไม่')) return;
+    try {
+      await updateLoanStatus(request.id, 'cancelled');
+      await loadApprovalRequests();
+    } catch (error) {
+      alert(error?.response?.message || 'ยกเลิกคำขอไม่สำเร็จ');
+    }
   }
 
   // Reject flow
@@ -310,7 +355,7 @@
             </div>
 
             <p class="text-sm text-[#778078]">
-              ของที่ขอยืม: <b class="text-ink">{(request.expand?.items ? request.expand.items.map((i) => i.name).join(', ') : (request.items || request.itemIds || []).map(itemName).join(', ')) || '-'}</b>
+              ของที่ขอยืม: <b class="text-ink">{requestItems(request).map((item) => `${typeof item === 'object' ? item.name : itemName(item)} × ${requestQuantity(request, item)}`).join(', ') || '-'}</b>
             </p>
             <p class="text-sm text-[#778078]">
               กำหนดเวลาคืน: <b class="text-ink">{formatDate(request.dueDate)}</b> · อีเมล: {request.email}
@@ -364,6 +409,12 @@
           <!-- Action Buttons for Teacher -->
           {#if $userType === 'teachers' && request.status === 'pending_teacher'}
             <div class="flex flex-wrap gap-2 self-start">
+              <Button variant="outline" size="sm" on:click={() => startQuantityEditing(request)}>
+                <Check size={15} /> แก้จำนวน
+              </Button>
+              <Button variant="outline" size="sm" on:click={() => cancelPendingRequest(request)}>
+                <X size={15} /> ยกเลิกคำขอ
+              </Button>
               <Button variant="outline" size="sm" on:click={() => startReject(request)}>
                 <X size={15} /> ไม่รับทราบ
               </Button>
@@ -384,6 +435,12 @@
           <!-- Action Buttons for Superadmin / Admin -->
           {#if $userType === 'superadmin' && request.status === 'pending_caretaker'}
             <div class="flex flex-wrap gap-2 self-start">
+              <Button variant="outline" size="sm" on:click={() => startQuantityEditing(request)}>
+                <Check size={15} /> แก้จำนวน
+              </Button>
+              <Button variant="outline" size="sm" on:click={() => cancelPendingRequest(request)}>
+                <X size={15} /> ยกเลิกคำขอ
+              </Button>
               <Button variant="outline" size="sm" on:click={() => startReject(request)}>
                 <X size={15} /> ไม่อนุมัติ
               </Button>
@@ -405,6 +462,27 @@
             </div>
           {/if}
         </div>
+
+        {#if editingQuantitiesId === request.id}
+          <div class="mt-4 rounded-xl border border-[#dce5dc] bg-[#fbfcfa] p-4">
+            <p class="text-sm font-bold text-ink">แก้ไขจำนวนที่ขอยืม</p>
+            <div class="mt-3 grid gap-2 md:grid-cols-2">
+              {#each requestItems(request) as itemOrId}
+                {@const itemId = typeof itemOrId === 'object' ? itemOrId.id : itemOrId}
+                {@const item = typeof itemOrId === 'object' ? itemOrId : $items.find((entry) => entry.id === itemId)}
+                <label class="flex items-center justify-between gap-3 rounded-lg bg-white p-2 text-sm">
+                  <span>{item?.name || itemName(itemId)}</span>
+                  <input class="w-20 rounded-lg border border-[#c4d6c5] p-2 text-center" type="number" min="1" max={Math.max(1, Number(item?.available) || 99)} bind:value={editQuantities[itemId]} />
+                </label>
+              {/each}
+            </div>
+            {#if quantityError}<p class="mt-2 text-xs text-red-600">{quantityError}</p>{/if}
+            <div class="mt-3 flex gap-2">
+              <Button variant="outline" size="sm" on:click={() => (editingQuantitiesId = '')}>ยกเลิก</Button>
+              <Button size="sm" disabled={savingQuantities} on:click={() => saveQuantityEditing(request)}>{savingQuantities ? 'กำลังบันทึก...' : 'บันทึกจำนวน'}</Button>
+            </div>
+          </div>
+        {/if}
 
         <!-- Inline Form for Superadmin Approving with Text Note (MAC address) -->
         {#if approvingId === request.id && $userType === 'superadmin'}

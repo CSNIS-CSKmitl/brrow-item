@@ -4,13 +4,13 @@
   import { items as mockItems } from '../../lib/mock-data.js';
   import Button from '../../lib/components/Button.svelte';
   import { items, teachers, userType } from '../../lib/stores.js';
-  import { getMyLoanRequests, updateMyLoanRequest, pb } from '../../lib/pocketbase.js';
+  import { getMyLoanRequests, updateMyLoanRequest, cancelLoanRequest, pb } from '../../lib/pocketbase.js';
   import { exportSingleRequestToCSV, formatDateTime } from '../../lib/csv.js';
   import { getStatusBadgeClass, getStatusDotClass } from '../../lib/status.js';
 
   let requests = [];
   let editingId = '';
-  let editForm = { dueDate: '', note: '', teacher: '' };
+  let editForm = { dueDate: '', note: '', teacher: '', quantities: {} };
   let editError = '';
   let saving = false;
   let unsub = null;
@@ -25,7 +25,8 @@
     pending_caretaker: 'รอผู้ดูแลตรวจสอบ',
     approved: 'อนุมัติแล้ว',
     returned: 'คืนแล้ว',
-    rejected: 'ไม่อนุมัติ'
+    rejected: 'ไม่อนุมัติ',
+    cancelled: 'ยกเลิกแล้ว'
   };
 
   async function loadMyRequests() {
@@ -51,6 +52,19 @@
 
   function itemName(id) {
     return $items.find((item) => item.id === id)?.name || mockItems.find((item) => item.id === id)?.name || id;
+  }
+
+  function requestItems(request) {
+    return request.expand?.items || request.items || request.itemIds || [];
+  }
+
+  function requestQuantity(request, itemOrId) {
+    const id = typeof itemOrId === 'object' ? itemOrId.id : itemOrId;
+    return Math.max(1, Number(request.quantities?.[id]) || 1);
+  }
+
+  function canEdit(request) {
+    return request.status === 'pending_teacher' || request.status === 'pending_caretaker';
   }
 
   function stepIndex(status) {
@@ -86,7 +100,12 @@
         formattedDue = request.dueDate.slice(0, 16);
       }
     }
-    editForm = { dueDate: formattedDue, note: request.note || '', teacher: request.teacher || '' };
+    editForm = {
+      dueDate: formattedDue,
+      note: request.note || '',
+      teacher: request.teacher || '',
+      quantities: Object.fromEntries(requestItems(request).map((item) => [typeof item === 'object' ? item.id : item, requestQuantity(request, item)]))
+    };
   }
 
   async function saveEditing(request) {
@@ -100,6 +119,17 @@
       editError = error?.response?.message || 'บันทึกการแก้ไขไม่สำเร็จ';
     } finally {
       saving = false;
+    }
+  }
+
+  async function cancelRequest(request) {
+    if (!window.confirm('ยืนยันยกเลิกคำขอยืมนี้หรือไม่')) return;
+    try {
+      await cancelLoanRequest(request.id);
+      await loadMyRequests();
+      editingId = '';
+    } catch (error) {
+      editError = error?.response?.message || 'ยกเลิกคำขอไม่สำเร็จ';
     }
   }
 </script>
@@ -144,10 +174,11 @@
 
           <div class="mt-4 rounded-xl bg-[#f5f7f3] p-4">
             <div class="space-y-2">
-              {#each (request.expand?.items || request.items || []) as itemOrId}
+              {#each requestItems(request) as itemOrId}
                 <p class="flex items-center gap-2 text-sm font-semibold text-ink">
                   <span class="h-2 w-2 rounded-full bg-sage"></span>
                   {typeof itemOrId === 'object' && itemOrId?.name ? itemOrId.name : itemName(itemOrId)}
+                  <span class="text-xs font-normal text-[#89938b]">× {requestQuantity(request, itemOrId)}</span>
                 </p>
               {/each}
             </div>
@@ -171,7 +202,7 @@
             {/if}
           </div>
 
-          {#if request.status === 'pending_teacher'}
+          {#if canEdit(request)}
             {#if editingId === request.id}
               <form class="mt-4 space-y-4 rounded-xl border border-[#dce5dc] bg-[#fbfcfa] p-4" on:submit|preventDefault={() => saveEditing(request)}>
                 <div class="flex items-center justify-between gap-3">
@@ -187,6 +218,19 @@
                   </select>
                 </label>
                 <label>วันและเวลาที่ต้องการคืน<input type="datetime-local" bind:value={editForm.dueDate} required /></label>
+                <div>
+                  <p class="font-semibold">จำนวนที่ต้องการ</p>
+                  <div class="mt-2 space-y-2">
+                    {#each requestItems(request) as itemOrId}
+                      {@const itemId = typeof itemOrId === 'object' ? itemOrId.id : itemOrId}
+                      {@const item = typeof itemOrId === 'object' ? itemOrId : $items.find((entry) => entry.id === itemId)}
+                      <label class="flex items-center justify-between gap-3 text-sm">
+                        <span>{item?.name || itemName(itemId)}</span>
+                        <input class="w-20 rounded-lg border border-[#c4d6c5] p-2 text-center" type="number" min="1" max={Math.max(1, Number(item?.available) || 99)} bind:value={editForm.quantities[itemId]} />
+                      </label>
+                    {/each}
+                  </div>
+                </div>
                 <label>หมายเหตุ <span class="font-normal text-[#9aa19b]">(ไม่บังคับ)</span>
                   <textarea bind:value={editForm.note} rows="3"></textarea>
                 </label>
@@ -201,14 +245,21 @@
               <button type="button" class="mt-4 inline-flex items-center gap-2 rounded-lg border border-[#c9d2c8] px-3 py-2 text-xs font-bold text-sage hover:bg-[#edf2ed]" on:click={() => startEditing(request)}>
                 <Pencil size={14}/>แก้ไขคำขอ
               </button>
-              <p class="mt-2 text-xs text-[#89938b]">แก้ไขได้จนกว่า อจ. จะรับทราบ</p>
+              <button type="button" class="ml-2 inline-flex items-center gap-2 rounded-lg border border-rose-200 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-50" on:click={() => cancelRequest(request)}>
+                <X size={14}/>ยกเลิกคำขอ
+              </button>
+              <p class="mt-2 text-xs text-[#89938b]">แก้ไขหรือยกเลิกได้ก่อนขั้นตอนถัดไปจะรับคำขอ</p>
             {/if}
           {/if}
 
-          {#if request.status === 'rejected'}
+          {#if request.status === 'cancelled'}
+            <div class="mt-5 rounded-xl bg-slate-50 p-4 text-sm font-semibold text-slate-700">คำขอนี้ถูกยกเลิกแล้ว</div>
+          {/if}
+
+          {#if request.status === 'rejected' || request.status === 'cancelled'}
             <div class="mt-5 rounded-xl bg-[#fff1ef] p-4 text-sm font-semibold text-[#a34e43]">
               <div class="flex items-center gap-3">
-                <X size={18}/> {request.teacherComment ? 'อาจารย์ไม่อนุมัติคำขอนี้' : request.adminComment ? 'ผู้ดูแลไม่อนุมัติคำขอนี้' : 'คำขอนี้ไม่ผ่านการอนุมัติ'}
+                <X size={18}/> {request.status === 'cancelled' ? 'คำขอนี้ถูกยกเลิกแล้ว' : request.teacherComment ? 'อาจารย์ไม่อนุมัติคำขอนี้' : request.adminComment ? 'ผู้ดูแลไม่อนุมัติคำขอนี้' : 'คำขอนี้ไม่ผ่านการอนุมัติ'}
               </div>
               {#if request.teacherComment || request.adminComment}
                 <p class="mt-2 pl-7 text-xs font-normal">เหตุผล: {request.teacherComment || request.adminComment}</p>

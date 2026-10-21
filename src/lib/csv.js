@@ -18,6 +18,7 @@ export function exportRequestsToCSV(requests, items = [], filename = 'loan_reque
     approved: 'อนุมัติแล้ว',
     returned: 'คืนแล้ว',
     rejected: 'ไม่อนุมัติ',
+    cancelled: 'ยกเลิกแล้ว',
   };
 
   const getItemName = (id) => items.find((i) => i.id === id)?.name || id;
@@ -56,9 +57,14 @@ export function exportRequestsToCSV(requests, items = [], filename = 'loan_reque
     const macs = parseMacList(rawTags);
     const firstMac = macs.length > 0 ? macs[0] : rawTags;
 
-    const itemNames = req.expand?.items
-      ? req.expand.items.map((i) => i.name).join(', ')
-      : (req.items || req.itemIds || []).map(getItemName).join(', ');
+    const itemNames = (req.expand?.items || req.items || req.itemIds || [])
+      .map((item) => {
+        const id = typeof item === 'object' ? item.id : item;
+        const name = typeof item === 'object' ? item.name : getItemName(id);
+        const quantity = Math.max(1, Number(req.quantities?.[id]) || 1);
+        return `${name} × ${quantity}`;
+      })
+      .join(', ');
 
     // แถวแรกของคำขอ: ข้อมูลของคำขอครบถ้วน และ MAC แรก
     rows.push([

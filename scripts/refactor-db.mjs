@@ -17,6 +17,8 @@ console.log(`Connected to PocketBase at ${targetUrl} as ${adminEmail}`);
 
 // 1. Inspect and fix items collection data integrity
 const itemsCol = await pb.collections.getOne('items');
+const loanReqCol = await pb.collections.getOne('loan_requests');
+const hasQuantitiesField = loanReqCol.fields.some((field) => field.name === 'quantities');
 const allItems = await pb.collection('items').getFullList();
 console.log(`\n--- Inspecting ${allItems.length} items ---`);
 for (const item of allItems) {
@@ -48,6 +50,12 @@ for (const req of allRequests) {
   if (req.adminComment && !req.asset_tags) {
     patch.asset_tags = req.adminComment;
   }
+  // Do not write this field until the schema has been added. A second run
+  // fills legacy requests after the first run applies the schema.
+  if (hasQuantitiesField && !req.quantities) {
+    const ids = Array.isArray(req.items) && req.items.length > 0 ? req.items : (req.itemIds || []);
+    if (ids.length > 0) patch.quantities = Object.fromEntries(ids.map((id) => [id, 1]));
+  }
 
   if (Object.keys(patch).length > 0) {
     console.log(`[Record Migration] Request ${req.id} (${req.borrowerName}): patching ${JSON.stringify(patch)}`);
@@ -61,7 +69,6 @@ for (const req of allRequests) {
 }
 
 // 3. Update loan_requests collection schema
-const loanReqCol = await pb.collections.getOne('loan_requests');
 let fields = structuredClone(loanReqCol.fields);
 let schemaChanged = false;
 
@@ -104,6 +111,21 @@ if (!approvedAtField) {
   console.log('[Schema] Adding "approvedAt" (date) field');
 }
 
+// Store the requested amount per item, e.g. { "itemId": 3 }.
+let quantitiesField = fields.find((f) => f.name === 'quantities');
+if (!quantitiesField) {
+  fields.push({ type: 'json', name: 'quantities', required: false, maxSize: 20000 });
+  schemaChanged = true;
+  console.log('[Schema] Adding "quantities" (json) field');
+}
+
+const statusField = fields.find((f) => f.name === 'status');
+if (statusField && Array.isArray(statusField.values) && !statusField.values.includes('cancelled')) {
+  statusField.values = [...statusField.values, 'cancelled'];
+  schemaChanged = true;
+  console.log('[Schema] Adding "cancelled" status option');
+}
+
 // If --drop-legacy is requested, drop legacy 'itemIds'
 if (dropLegacy) {
   const itemIdsIndex = fields.findIndex((f) => f.name === 'itemIds');
@@ -141,6 +163,16 @@ if (schemaChanged) {
   if (apply) {
     await pb.collections.update(loanReqCol.id, { fields, updateRule });
     console.log('[Schema] Successfully updated loan_requests collection schema');
+    if (!hasQuantitiesField) {
+      for (const req of allRequests) {
+        if (req.quantities) continue;
+        const ids = Array.isArray(req.items) && req.items.length > 0 ? req.items : (req.itemIds || []);
+        if (ids.length > 0) {
+          await pb.collection('loan_requests').update(req.id, { quantities: Object.fromEntries(ids.map((id) => [id, 1])) });
+        }
+      }
+      console.log('[Data] Filled quantities=1 for legacy loan requests');
+    }
   } else {
     console.log('[Schema] Dry run: schema changes ready to apply with --apply');
   }

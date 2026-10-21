@@ -81,6 +81,7 @@ export async function submitLoan(form) {
       ...form,
       itemIds: ids,
       items: ids,
+      quantities: form.quantities || Object.fromEntries(ids.map((id) => [id, 1])),
     });
     selectedItems.set([]);
     panelOpen.set(false);

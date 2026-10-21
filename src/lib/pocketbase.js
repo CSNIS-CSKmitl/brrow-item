@@ -104,13 +104,14 @@ export async function getItems() {
   return pb.collection('items').getFullList({ sort: '-created', requestKey: null });
 }
 
-export async function createLoanRequest({ itemIds, items, borrowerName, email, dueDate, note, teacher }) {
+export async function createLoanRequest({ itemIds, items, quantities, borrowerName, email, dueDate, note, teacher }) {
   const currentUser = pb.authStore.record;
   const isTeacher = getUserType(currentUser) === 'teachers';
   const isAdmin = isSuperadmin(currentUser);
 
   const request = {
     items: items || itemIds,
+    quantities: quantities || Object.fromEntries((items || itemIds || []).map((id) => [id, 1])),
     borrowerName: currentUser?.name || borrowerName || currentUser?.email,
     email: currentUser?.email || email,
     dueDate,
@@ -205,7 +206,8 @@ export async function updateLoanStatus(id, status, comment = '') {
       for (const itemId of itemIdsToAdjust) {
         try {
           const item = await pb.collection('items').getOne(itemId);
-          const nextAvail = Math.max(0, (Number(item.available) || 0) - 1);
+          const quantity = Math.max(1, Number(previousRecord.quantities?.[itemId]) || 1);
+          const nextAvail = Math.max(0, (Number(item.available) || 0) - quantity);
           await pb.collection('items').update(itemId, { available: nextAvail });
         } catch {}
       }
@@ -213,7 +215,8 @@ export async function updateLoanStatus(id, status, comment = '') {
       for (const itemId of itemIdsToAdjust) {
         try {
           const item = await pb.collection('items').getOne(itemId);
-          const nextAvail = Math.min(Number(item.total) || 1, (Number(item.available) || 0) + 1);
+          const quantity = Math.max(1, Number(previousRecord.quantities?.[itemId]) || 1);
+          const nextAvail = Math.min(Number(item.total) || 1, (Number(item.available) || 0) + quantity);
           await pb.collection('items').update(itemId, { available: nextAvail });
         } catch {}
       }
@@ -227,8 +230,16 @@ export async function markLoanReturned(id, comment = '') {
   return updateLoanStatus(id, 'returned', comment);
 }
 
-export async function updateMyLoanRequest(id, { dueDate, note, teacher }) {
-  return pb.collection('loan_requests').update(id, { dueDate, note, teacher }, { expand: 'requester,teacher,caretaker' });
+export async function updateMyLoanRequest(id, { dueDate, note, teacher, quantities }) {
+  return pb.collection('loan_requests').update(id, { dueDate, note, teacher, quantities }, { expand: 'requester,teacher,caretaker,items' });
+}
+
+export async function cancelLoanRequest(id) {
+  return updateLoanStatus(id, 'cancelled');
+}
+
+export async function updateLoanQuantities(id, quantities) {
+  return pb.collection('loan_requests').update(id, { quantities }, { expand: 'requester,teacher,caretaker,items' });
 }
 
 export async function createItem(data) {

@@ -12,6 +12,14 @@
   let teacherId = '';
   let dueDate = '';
   let note = '';
+  let quantities = {};
+
+  $: quantities = Object.fromEntries(selectedItems.map((item) => [item.id, Math.min(Math.max(1, Number(quantities[item.id]) || 1), Math.max(1, Number(item.available) || 1))]));
+
+  function changeQuantity(item, value) {
+    const max = Math.max(1, Number(item.available) || 1);
+    quantities = { ...quantities, [item.id]: Math.min(max, Math.max(1, Number(value) || 1)) };
+  }
 </script>
 
 {#if open}
@@ -33,7 +41,12 @@
               <p class="truncate text-sm font-bold text-ink">{item.name}</p>
               <p class="text-xs text-[#818981]">{item.category}</p>
             </div>
-            <Check class="ml-auto text-sage" size={18}/>
+            <div class="ml-auto flex items-center gap-2">
+              <button type="button" class="grid h-7 w-7 place-items-center rounded-md border bg-white" on:click={() => changeQuantity(item, (quantities[item.id] || 1) - 1)}>-</button>
+              <input class="h-7 w-12 rounded-md border text-center text-sm" type="number" min="1" max={Math.max(1, Number(item.available) || 1)} value={quantities[item.id] || 1} on:change={(event) => changeQuantity(item, event.currentTarget.value)} />
+              <button type="button" class="grid h-7 w-7 place-items-center rounded-md border bg-white" on:click={() => changeQuantity(item, (quantities[item.id] || 1) + 1)}>+</button>
+              <span class="text-xs text-[#818981]">/ {item.available || 1}</span>
+            </div>
           </div>
         {/each}
       </div>
@@ -81,7 +94,7 @@
       <Button
         size="lg"
         disabled={selectedItems.length === 0 || !borrowerName || !borrowerEmail || (!isTeacher && !teacherId) || !dueDate}
-        on:click={() => onSubmit({ dueDate, note, teacher: isTeacher ? '' : teacherId })}
+        on:click={() => onSubmit({ dueDate, note, teacher: isTeacher ? '' : teacherId, quantities })}
       >
         {isTeacher ? 'ส่งคำขอถึงผู้ดูแล' : 'ส่งคำขอยืม (ให้อาจารย์รับทราบ)'} <ArrowRight size={17}/>
       </Button>

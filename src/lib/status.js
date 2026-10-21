@@ -4,6 +4,7 @@ export const statusLabels = {
   approved: 'อนุมัติแล้ว',
   returned: 'คืนแล้ว',
   rejected: 'ไม่อนุมัติ',
+  cancelled: 'ยกเลิกแล้ว',
 };
 
 export function getStatusLabel(request) {
@@ -30,6 +31,8 @@ export function getStatusBadgeClass(status) {
     case 'rejected':
       // Rose Red (ไม่อนุมัติ)
       return 'bg-rose-50 text-rose-800 border border-rose-300/90';
+    case 'cancelled':
+      return 'bg-slate-50 text-slate-700 border border-slate-300/90';
     default:
       return 'bg-gray-50 text-gray-700 border border-gray-200';
   }
@@ -47,6 +50,8 @@ export function getStatusDotClass(status) {
       return 'bg-teal-500';
     case 'rejected':
       return 'bg-rose-500';
+    case 'cancelled':
+      return 'bg-slate-500';
     default:
       return 'bg-gray-400';
   }
