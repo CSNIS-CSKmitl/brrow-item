@@ -96,6 +96,7 @@ jobs:
           cp -R dist "$package_dir/"
           cp -R server.js "$package_dir/"
           cp -R server "$package_dir/"
+          cp -R scripts "$package_dir/"
 
           tar -czf "$GITHUB_WORKSPACE/runtime.tar.gz" -C "$package_dir" .
 
@@ -294,6 +295,8 @@ jobs:
           # Skip the prepare script, which requires development-only Svelte tools.
           stage='install production dependencies'
           npm ci --omit=dev --ignore-scripts
+          stage='migrate PocketBase loan request schema'
+          npm run refactor:db
           export NODE_ENV=production
           export PORT=3000
           stage='start or restart PM2'
