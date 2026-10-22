@@ -1,6 +1,7 @@
 <script>
   import { ArrowRight, CalendarDays, Check, X } from 'lucide-svelte';
   import Button from './Button.svelte';
+  import { canAdmin } from '../stores.js';
   export let selectedItems = [];
   export let open = false;
   export let onClose = () => {};
@@ -45,7 +46,9 @@
               <button type="button" class="grid h-7 w-7 place-items-center rounded-md border bg-white" on:click={() => changeQuantity(item, (quantities[item.id] || 1) - 1)}>-</button>
               <input class="h-7 w-12 rounded-md border text-center text-sm" type="number" min="1" max={Math.max(1, Number(item.available) || 1)} value={quantities[item.id] || 1} on:change={(event) => changeQuantity(item, event.currentTarget.value)} />
               <button type="button" class="grid h-7 w-7 place-items-center rounded-md border bg-white" on:click={() => changeQuantity(item, (quantities[item.id] || 1) + 1)}>+</button>
-              <span class="text-xs text-[#818981]">/ {item.available || 1}</span>
+              {#if $canAdmin}
+                <span class="text-xs text-[#818981]">/ {Math.max(0, Number(item.available) || 0)}</span>
+              {/if}
             </div>
           </div>
         {/each}
