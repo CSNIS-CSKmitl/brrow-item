@@ -156,6 +156,9 @@ export async function getMyLoanRequests() {
 }
 
 export async function updateLoanStatus(id, status, comment = '') {
+  if (status === 'returned' && !isSuperadmin()) {
+    throw new Error('เฉพาะผู้ดูแลระบบเท่านั้นที่บันทึกการคืนของได้');
+  }
   const user = pb.authStore.record?.id;
   const data = { status };
   const trimmed = comment ? comment.trim() : '';

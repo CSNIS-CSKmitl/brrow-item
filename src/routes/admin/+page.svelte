@@ -188,6 +188,7 @@
 
   // Return flow
   async function handleReturnLoan(request) {
+    if (returningId || request.status !== 'approved') return;
     returnError = '';
     returningId = request.id;
     try {
@@ -563,11 +564,11 @@
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={returningId === request.id}
+                  disabled={!!returningId}
                   on:click={() => handleReturnLoan(request)}
                 >
                   <RotateCcw size={15} />
-                  {returningId === request.id ? 'กำลังบันทึก...' : 'บันทึกคืนของ'}
+                  {returningId === request.id ? 'กำลังบันทึก...' : 'คืนของแล้ว'}
                 </Button>
               </div>
             {/if}
