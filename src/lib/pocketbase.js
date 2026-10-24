@@ -145,7 +145,7 @@ export async function getLoanRequests(status = '', teacherId = null) {
   if (status) filters.push(`status = "${status}"`);
   if (teacherId) filters.push(`teacher = "${teacherId}"`);
   const filter = filters.join(' && ');
-  return pb.collection('loan_requests').getFullList({ filter, sort: '-created', expand: 'requester,teacher,caretaker,items', requestKey: null });
+  return pb.collection('loan_requests').getFullList({ filter, sort: '-created', expand: 'requester,teacher,caretaker,items,created_by,updated_by,approved_by', requestKey: null });
 }
 
 export async function getMyLoanRequests() {
@@ -154,7 +154,7 @@ export async function getMyLoanRequests() {
   return pb.collection('loan_requests').getFullList({
     filter: `requester = "${userId}"`,
     sort: '-created',
-    expand: 'requester,teacher,caretaker,items',
+    expand: 'requester,teacher,caretaker,items,created_by,updated_by,approved_by',
     requestKey: null
   });
 }

@@ -365,6 +365,8 @@
                 อนุมัติเมื่อ: <b>{formatDate(request.approvedAt)}</b>
               </p>
             {/if}
+            <p class="text-xs text-[#9aa29b]">เพิ่มโดย: {request.expand?.created_by?.name || request.expand?.created_by?.email || request.created_by || '-'} · แก้ไขโดย: {request.expand?.updated_by?.name || request.expand?.updated_by?.email || request.updated_by || '-'}</p>
+            {#if request.approved_by}<p class="text-sm text-emerald-800">อนุมัติโดย: <b>{request.expand?.approved_by?.name || request.expand?.approved_by?.email || request.approved_by}</b></p>{/if}
             {#if request.returnedAt}
               <p class="text-sm text-teal-800">
                 คืนของเมื่อ: <b>{formatDate(request.returnedAt)}</b>
