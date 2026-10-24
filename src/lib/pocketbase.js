@@ -122,10 +122,14 @@ export async function createLoanRequest({ itemIds, items, quantities, borrowerNa
     teacher: isTeacher || isAdmin ? currentUser?.id : teacher,
     status: isTeacher ? 'pending_caretaker' : isAdmin ? 'approved' : 'pending_teacher'
   };
+  request.created_by = currentUser?.id;
+  request.updated_by = currentUser?.id;
 
   if (isAdmin) {
     request.caretaker = currentUser?.id;
     request.approvedAt = new Date().toISOString();
+    request.approved_by = currentUser?.id;
+    request.approved_at = request.approvedAt;
   }
 
   return pb.collection('loan_requests').create(request);
@@ -157,7 +161,7 @@ export async function getMyLoanRequests() {
 
 export async function updateLoanStatus(id, status, comment = '') {
   const user = pb.authStore.record?.id;
-  const data = { status };
+  const data = { status, updated_by: user || undefined };
   const trimmed = comment ? comment.trim() : '';
 
   if (getUserType() === 'teachers') {
@@ -178,6 +182,8 @@ export async function updateLoanStatus(id, status, comment = '') {
     }
     if (status === 'approved') {
       data.approvedAt = new Date().toISOString();
+      data.approved_by = user || undefined;
+      data.approved_at = data.approvedAt;
     }
     if (status === 'rejected') {
       data.rejectedAt = new Date().toISOString();
@@ -243,11 +249,13 @@ export async function updateLoanQuantities(id, quantities) {
 }
 
 export async function createItem(data) {
-  return pb.collection('items').create(data);
+  const user = pb.authStore.record?.id;
+  return pb.collection('items').create({ ...data, created_by: user || undefined, updated_by: user || undefined });
 }
 
 export async function updateItem(id, data) {
-  return pb.collection('items').update(id, data);
+  const user = pb.authStore.record?.id;
+  return pb.collection('items').update(id, { ...data, updated_by: user || undefined });
 }
 
 export async function deleteItem(id) {
