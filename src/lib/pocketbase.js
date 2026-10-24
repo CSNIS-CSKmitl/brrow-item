@@ -217,7 +217,7 @@ export async function updateLoanStatus(id, status, comment = '') {
           const item = await pb.collection('items').getOne(itemId);
           const quantity = Math.max(1, Number(previousRecord.quantities?.[itemId]) || 1);
           const nextAvail = Math.max(0, (Number(item.available) || 0) - quantity);
-          await pb.collection('items').update(itemId, { available: nextAvail });
+          await pb.collection('items').update(itemId, { available: nextAvail, updated_by: user || undefined });
         } catch {}
       }
     } else if (status === 'returned' && previousRecord.status !== 'returned') {
@@ -226,7 +226,7 @@ export async function updateLoanStatus(id, status, comment = '') {
           const item = await pb.collection('items').getOne(itemId);
           const quantity = Math.max(1, Number(previousRecord.quantities?.[itemId]) || 1);
           const nextAvail = Math.min(Number(item.total) || 1, (Number(item.available) || 0) + quantity);
-          await pb.collection('items').update(itemId, { available: nextAvail });
+          await pb.collection('items').update(itemId, { available: nextAvail, updated_by: user || undefined });
         } catch {}
       }
     }
@@ -240,7 +240,8 @@ export async function markLoanReturned(id, comment = '') {
 }
 
 export async function updateMyLoanRequest(id, { dueDate, note, teacher, quantities }) {
-  return pb.collection('loan_requests').update(id, { dueDate, note, teacher, quantities }, { expand: 'requester,teacher,caretaker,items' });
+  const user = pb.authStore.record?.id;
+  return pb.collection('loan_requests').update(id, { dueDate, note, teacher, quantities, updated_by: user || undefined }, { expand: 'requester,teacher,caretaker,items,created_by,updated_by,approved_by' });
 }
 
 export async function cancelLoanRequest(id) {
@@ -248,7 +249,8 @@ export async function cancelLoanRequest(id) {
 }
 
 export async function updateLoanQuantities(id, quantities) {
-  return pb.collection('loan_requests').update(id, { quantities }, { expand: 'requester,teacher,caretaker,items' });
+  const user = pb.authStore.record?.id;
+  return pb.collection('loan_requests').update(id, { quantities, updated_by: user || undefined }, { expand: 'requester,teacher,caretaker,items,created_by,updated_by,approved_by' });
 }
 
 export async function createItem(data) {
