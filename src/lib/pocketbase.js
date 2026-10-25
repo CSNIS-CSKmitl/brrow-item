@@ -132,7 +132,23 @@ export async function createLoanRequest({ itemIds, items, quantities, borrowerNa
     request.approved_at = request.approvedAt;
   }
 
-  return pb.collection('loan_requests').create(request);
+  const created = await pb.collection('loan_requests').create(request);
+  try {
+    const itemArr = Array.isArray(request.items) ? request.items : [];
+    for (const itemId of itemArr) {
+      if (!itemId) continue;
+      const qty = Number(request.quantities?.[itemId]) || 1;
+      await pb.collection('loan_items').create({
+        request: created.id,
+        item: itemId,
+        quantity: qty,
+        status: created.status === 'approved' ? 'borrowed' : 'pending'
+      });
+    }
+  } catch (err) {
+    console.warn('[loan_items] Sync failed (non-blocking):', err);
+  }
+  return created;
 }
 
 export async function getTeachers() {
@@ -240,6 +256,25 @@ export async function updateLoanStatus(id, status, comment = '') {
         } catch {}
       }
     }
+  }
+
+  try {
+    if (status === 'returned') {
+      const items = await pb.collection('loan_items').getFullList({ filter: `request = "${id}"` });
+      for (const it of items) {
+        await pb.collection('loan_items').update(it.id, {
+          status: 'returned',
+          returned_at: new Date().toISOString()
+        });
+      }
+    } else if (status === 'approved') {
+      const items = await pb.collection('loan_items').getFullList({ filter: `request = "${id}"` });
+      for (const it of items) {
+        await pb.collection('loan_items').update(it.id, { status: 'borrowed' });
+      }
+    }
+  } catch (err) {
+    console.warn('[loan_items] Status update sync failed:', err);
   }
 
   return updatedRecord;
