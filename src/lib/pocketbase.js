@@ -206,6 +206,16 @@ export async function updateLoanStatus(id, status, comment = '') {
 
   const updatedRecord = await pb.collection('loan_requests').update(id, data, { expand: 'requester,teacher,caretaker,items' });
 
+  // Ask the server to record who made the decision in admin_actions (best-effort).
+  if (status === 'approved' || status === 'rejected') {
+    fetch('/api/admin/action', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, action: status === 'approved' ? 'approve' : 'reject' })
+    }).catch(() => {});
+  }
+
   if (isSuperadmin() && previousRecord) {
     const itemIdsToAdjust = Array.isArray(previousRecord.items) && previousRecord.items.length > 0
       ? previousRecord.items

@@ -256,6 +256,41 @@ const server = createServer(async (req, res) => {
     }
     return;
   }
+  if (pathname === '/api/admin/action') {
+    if (req.method !== 'POST') {
+      jsonResponse(res, 405, { ok: false, error: 'method not allowed' }, { Allow: 'POST' });
+      return;
+    }
+    try {
+      const user = await getSessionUser(req).catch(() => null);
+      if (!user?.id) { jsonResponse(res, 401, { ok: false, error: 'authentication required' }); return; }
+      const payload = await readJsonBody(req);
+      const id = String(payload?.id || '').trim();
+      const action = String(payload?.action || '');
+      if (!/^[a-zA-Z0-9_-]{1,32}$/.test(id) || !['approve', 'reject'].includes(action)) {
+        jsonResponse(res, 400, { ok: false, error: 'invalid payload' });
+        return;
+      }
+      const pb = await adminPocketBase();
+      const record = await pb.collection('loan_requests').getOne(id);
+      // Only record decisions the database confirms this user actually made.
+      const confirmed = record.updated_by === user.id && (
+        action === 'approve' ? record.status === 'approved' && record.approved_by === user.id : record.status === 'rejected'
+      );
+      if (!confirmed) { jsonResponse(res, 409, { ok: true, recorded: false }); return; }
+      await pb.collection('admin_actions').create({
+        service: 'loan', action, actor: user.id,
+        target_collection: 'loan_requests', target_id: id,
+        target_label: String(record.borrowerName || '').slice(0, 256),
+        metadata: { status: record.status }
+      });
+      jsonResponse(res, 200, { ok: true, recorded: true });
+    } catch (error) {
+      console.warn('[admin/action] failed:', error instanceof Error ? error.message : error);
+      jsonResponse(res, 200, { ok: true, recorded: false });
+    }
+    return;
+  }
   if (pathname === '/api/announcements') {
     if (req.method === 'GET') {
       try { jsonResponse(res, 200, { items: await loadAnnouncements(), configured: true }); }
