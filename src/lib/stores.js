@@ -22,8 +22,8 @@ export const user = writable(pb.authStore.record);
 // Distinguish "still restoring the session" from "confirmed signed out".
 export const authReady = writable(false);
 export const userType = derived(user, ($user) => getUserType($user));
-export const canAdmin = derived(user, ($user) => isAdmin($user));
-export const isTeacherOrAdmin = derived(user, ($user) => isAdmin($user) || getUserType($user) === 'teachers');
+export const canAdmin = derived(user, ($user) => isSuperadmin($user));
+export const isTeacherOrAdmin = derived(user, ($user) => isSuperadmin($user) || getUserType($user) === 'teachers');
 export const isSuperadminUser = derived(user, ($user) => isSuperadmin($user));
 
 // Shared Items & Loan Cart

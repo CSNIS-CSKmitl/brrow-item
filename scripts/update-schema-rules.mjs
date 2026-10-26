@@ -48,43 +48,43 @@ async function run() {
   await pb.collection('_superusers').authWithPassword(adminEmail, adminPassword);
   console.log(`Connected to PocketBase at ${targetUrl} as ${adminEmail}`);
 
-  // 1. Update loan_requests rules, fields, and indexes
+  // 1. Update loan_requests rules (Superadmin only for approval/caretaking, admin is normal user)
   console.log('\n--- 1. Checking loan_requests ---');
   const loanReqCol = await pb.collections.getOne('loan_requests');
   
-  const targetLoanReqListRule = '@request.auth.id != "" && (requester = @request.auth.id || teacher = @request.auth.id || caretaker = @request.auth.id || @request.auth.user_type.type = "superadmin" || @request.auth.user_type.type = "admin")';
-  const targetLoanReqViewRule = '@request.auth.id != "" && (requester = @request.auth.id || teacher = @request.auth.id || caretaker = @request.auth.id || @request.auth.user_type.type = "superadmin" || @request.auth.user_type.type = "admin")';
+  const targetLoanReqListRule = '@request.auth.id != "" && (requester = @request.auth.id || teacher = @request.auth.id || caretaker = @request.auth.id || @request.auth.user_type.type = "superadmin")';
+  const targetLoanReqViewRule = '@request.auth.id != "" && (requester = @request.auth.id || teacher = @request.auth.id || caretaker = @request.auth.id || @request.auth.user_type.type = "superadmin")';
   const targetLoanReqDeleteRule = '@request.auth.id != "" && @request.auth.user_type.type = "superadmin"';
   
-  const targetLoanReqCreateRule = '@request.auth.id != "" && @request.body.requester = @request.auth.id && (@request.body.status = "pending_teacher" || (@request.auth.user_type.type = "teachers" && @request.body.status = "pending_caretaker" && @request.body.teacher = @request.auth.id) || ((@request.auth.user_type.type = "superadmin" || @request.auth.user_type.type = "admin") && @request.body.status = "approved" && @request.body.teacher = @request.auth.id && @request.body.caretaker = @request.auth.id))';
+  const targetLoanReqCreateRule = '@request.auth.id != "" && @request.body.requester = @request.auth.id && (@request.body.status = "pending_teacher" || (@request.auth.user_type.type = "teachers" && @request.body.status = "pending_caretaker" && @request.body.teacher = @request.auth.id) || (@request.auth.user_type.type = "superadmin" && @request.body.status = "approved" && @request.body.teacher = @request.auth.id && @request.body.caretaker = @request.auth.id))';
   
-  const targetLoanReqUpdateRule = '(requester = @request.auth.id && status = "pending_teacher" && (@request.body.status:changed = false || @request.body.status = "cancelled") && @request.body.requester:changed = false && @request.body.borrowerName:changed = false && @request.body.email:changed = false && @request.body.items:changed = false && @request.body.caretaker:changed = false && @request.body.teacherComment:changed = false && @request.body.adminComment:changed = false) || (teacher = @request.auth.id && @request.auth.user_type.type = "teachers" && status = "pending_teacher" && ((@request.body.status = "pending_caretaker" && @request.body.teacherComment:changed = false) || (@request.body.status = "rejected" && @request.body.teacherComment != "")) && @request.body.requester:changed = false && @request.body.borrowerName:changed = false && @request.body.email:changed = false && @request.body.items:changed = false && @request.body.dueDate:changed = false && @request.body.note:changed = false && @request.body.teacher:changed = false && @request.body.caretaker:changed = false && @request.body.adminComment:changed = false) || ((@request.auth.user_type.type = "superadmin" || @request.auth.user_type.type = "admin") && status = "pending_caretaker" && ((@request.body.status = "approved" && @request.body.teacherComment:changed = false) || (@request.body.status = "rejected" && @request.body.teacherComment:changed = false && @request.body.adminComment != ""))) || ((@request.auth.user_type.type = "superadmin" || @request.auth.user_type.type = "admin") && (status = "approved" || status = "returned") && @request.body.status = "returned")';
+  const targetLoanReqUpdateRule = '(requester = @request.auth.id && status = "pending_teacher" && (@request.body.status:changed = false || @request.body.status = "cancelled") && @request.body.requester:changed = false && @request.body.borrowerName:changed = false && @request.body.email:changed = false && @request.body.items:changed = false && @request.body.caretaker:changed = false && @request.body.teacherComment:changed = false && @request.body.adminComment:changed = false) || (teacher = @request.auth.id && @request.auth.user_type.type = "teachers" && status = "pending_teacher" && ((@request.body.status = "pending_caretaker" && @request.body.teacherComment:changed = false) || (@request.body.status = "rejected" && @request.body.teacherComment != "")) && @request.body.requester:changed = false && @request.body.borrowerName:changed = false && @request.body.email:changed = false && @request.body.items:changed = false && @request.body.dueDate:changed = false && @request.body.note:changed = false && @request.body.teacher:changed = false && @request.body.caretaker:changed = false && @request.body.adminComment:changed = false) || (@request.auth.user_type.type = "superadmin" && status = "pending_caretaker" && ((@request.body.status = "approved" && @request.body.teacherComment:changed = false) || (@request.body.status = "rejected" && @request.body.teacherComment:changed = false && @request.body.adminComment != ""))) || (@request.auth.user_type.type = "superadmin" && (status = "approved" || status = "returned") && @request.body.status = "returned")';
 
   let reqChanged = false;
   let reqPatch = {};
 
   if (loanReqCol.listRule !== targetLoanReqListRule) {
-    console.log('[loan_requests] Update listRule: add admin and caretaker');
+    console.log('[loan_requests] Update listRule: superadmin only');
     reqPatch.listRule = targetLoanReqListRule;
     reqChanged = true;
   }
   if (loanReqCol.viewRule !== targetLoanReqViewRule) {
-    console.log('[loan_requests] Update viewRule: add admin and caretaker');
+    console.log('[loan_requests] Update viewRule: superadmin only');
     reqPatch.viewRule = targetLoanReqViewRule;
     reqChanged = true;
   }
   if (loanReqCol.deleteRule !== targetLoanReqDeleteRule) {
-    console.log('[loan_requests] Update deleteRule: add auth check');
+    console.log('[loan_requests] Update deleteRule: superadmin only');
     reqPatch.deleteRule = targetLoanReqDeleteRule;
     reqChanged = true;
   }
   if (loanReqCol.createRule !== targetLoanReqCreateRule) {
-    console.log('[loan_requests] Update createRule: allow admin');
+    console.log('[loan_requests] Update createRule: superadmin only');
     reqPatch.createRule = targetLoanReqCreateRule;
     reqChanged = true;
   }
   if (loanReqCol.updateRule !== targetLoanReqUpdateRule) {
-    console.log('[loan_requests] Update updateRule: allow requester cancellation');
+    console.log('[loan_requests] Update updateRule: superadmin only');
     reqPatch.updateRule = targetLoanReqUpdateRule;
     reqChanged = true;
   }
@@ -93,7 +93,6 @@ async function run() {
   const reqFields = structuredClone(loanReqCol.fields);
   let fieldsChanged = false;
 
-  // Drop redundant fields: approved_at (use approvedAt), approved_by (use caretaker), created_by (use requester), updated_by
   const redundantFields = ['approved_at', 'approved_by', 'created_by', 'updated_by'];
   for (const rName of redundantFields) {
     const idx = reqFields.findIndex(f => f.name === rName);
@@ -124,7 +123,7 @@ async function run() {
     reqChanged = true;
   }
 
-  // Check loan_requests indexes
+  // Indexes
   const reqIndexes = loanReqCol.indexes || [];
   const expectedReqIndexes = [
     'CREATE INDEX idx_loan_requests_status ON loan_requests (status)',
@@ -155,21 +154,15 @@ async function run() {
     console.log('✅ [loan_requests] Schema and rules are already up to date');
   }
 
-  // 2. Update loan_items rules and schema
+  // 2. Update loan_items rules (Superadmin only, admin is normal user)
   console.log('\n--- 2. Checking loan_items ---');
-  let loanItemsCol;
-  try {
-    loanItemsCol = await pb.collections.getOne('loan_items');
-  } catch {
-    console.log('[loan_items] Collection does not exist yet. Will create if applying.');
-  }
-
+  const loanItemsCol = await pb.collections.getOne('loan_items');
   const targetItemRules = {
-    listRule: '@request.auth.id != "" && (request.requester = @request.auth.id || request.teacher = @request.auth.id || request.caretaker = @request.auth.id || @request.auth.user_type.type = "superadmin" || @request.auth.user_type.type = "admin")',
-    viewRule: '@request.auth.id != "" && (request.requester = @request.auth.id || request.teacher = @request.auth.id || request.caretaker = @request.auth.id || @request.auth.user_type.type = "superadmin" || @request.auth.user_type.type = "admin")',
-    createRule: '@request.auth.id != "" && (request.requester = @request.auth.id || @request.auth.user_type.type = "superadmin" || @request.auth.user_type.type = "admin" || @request.auth.user_type.type = "teachers")',
-    updateRule: '@request.auth.id != "" && (@request.auth.user_type.type = "superadmin" || @request.auth.user_type.type = "admin" || (request.requester = @request.auth.id && request.status = "pending_teacher"))',
-    deleteRule: '@request.auth.id != "" && (@request.auth.user_type.type = "superadmin" || @request.auth.user_type.type = "admin" || (request.requester = @request.auth.id && request.status = "pending_teacher"))'
+    listRule: '@request.auth.id != "" && (request.requester = @request.auth.id || request.teacher = @request.auth.id || request.caretaker = @request.auth.id || @request.auth.user_type.type = "superadmin")',
+    viewRule: '@request.auth.id != "" && (request.requester = @request.auth.id || request.teacher = @request.auth.id || request.caretaker = @request.auth.id || @request.auth.user_type.type = "superadmin")',
+    createRule: '@request.auth.id != "" && (request.requester = @request.auth.id || @request.auth.user_type.type = "superadmin" || @request.auth.user_type.type = "teachers")',
+    updateRule: '@request.auth.id != "" && (@request.auth.user_type.type = "superadmin" || (request.requester = @request.auth.id && request.status = "pending_teacher"))',
+    deleteRule: '@request.auth.id != "" && (@request.auth.user_type.type = "superadmin" || (request.requester = @request.auth.id && request.status = "pending_teacher"))'
   };
 
   if (loanItemsCol) {
@@ -178,13 +171,12 @@ async function run() {
 
     for (const [rKey, rVal] of Object.entries(targetItemRules)) {
       if (loanItemsCol[rKey] !== rVal) {
-        console.log(`[loan_items] Update ${rKey}: secure access by request ownership / admin roles`);
+        console.log(`[loan_items] Update ${rKey}: superadmin only`);
         itemPatch[rKey] = rVal;
         itemChanged = true;
       }
     }
 
-    // Check indexes
     const indexes = loanItemsCol.indexes || [];
     const expectedIndexes = [
       'CREATE INDEX idx_loan_items_request ON loan_items (request)',
@@ -245,6 +237,42 @@ async function run() {
     }
   } else {
     console.log('✅ [items] Rules already up to date for superadmin');
+  }
+
+  // 4. Update print_jobs (superadmin only, admin behaves like normal user)
+  console.log('\n--- 4. Checking print_jobs ---');
+  const printJobsCol = await pb.collections.getOne('print_jobs');
+  const targetPrintRules = {
+    listRule: '@request.auth.id != "" && (user = @request.auth.id || @request.auth.user_type.type = "superadmin")',
+    viewRule: '@request.auth.id != "" && (user = @request.auth.id || @request.auth.user_type.type = "superadmin")'
+  };
+  let pjChanged = false;
+  let pjPatch = {};
+  for (const [rKey, rVal] of Object.entries(targetPrintRules)) {
+    if (printJobsCol[rKey] !== rVal) {
+      pjPatch[rKey] = rVal;
+      pjChanged = true;
+    }
+  }
+  if (pjChanged) {
+    if (apply) {
+      await pb.collections.update(printJobsCol.id, pjPatch);
+      console.log('✅ [print_jobs] Updated listRule & viewRule: superadmin only');
+    }
+  } else {
+    console.log('✅ [print_jobs] Rules already up to date');
+  }
+
+  // 5. Update push_queue (system only)
+  console.log('\n--- 5. Checking push_queue ---');
+  const pushQueueCol = await pb.collections.getOne('push_queue');
+  if (pushQueueCol.createRule !== null) {
+    if (apply) {
+      await pb.collections.update(pushQueueCol.id, { createRule: null });
+      console.log('✅ [push_queue] createRule set to null (system only)');
+    }
+  } else {
+    console.log('✅ [push_queue] createRule already system only');
   }
 
   console.log(`\n=== Migration ${apply ? 'COMPLETE' : 'DRY RUN FINISHED (use --apply to execute)'} ===`);

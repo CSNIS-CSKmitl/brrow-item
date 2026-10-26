@@ -88,9 +88,9 @@ export function isSuperadmin(record = pb.authStore.record) {
 }
 
 export function isAdmin(record = pb.authStore.record) {
-  // Both admin (000000000000000) and superadmin (000000000000009) can manage loan requests
+  // Regular admin is treated as normal user. Only superadmin (000000000000009) manages loan requests.
   const type = getUserType(record);
-  return type === 'superadmin' || type === 'admin';
+  return type === 'superadmin';
 }
 
 export function getUserType(record = pb.authStore.record) {
