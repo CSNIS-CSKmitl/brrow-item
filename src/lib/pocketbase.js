@@ -86,7 +86,8 @@ export function isSuperadmin(record = pb.authStore.record) {
   // Application authorization is based only on the user's `user_type` role.
   // PocketBase `_superusers` are backend service accounts and must never grant
   // access to the Borrowly admin UI.
-  return getUserType(record) === 'superadmin';
+  const type = getUserType(record);
+  return type === 'superadmin' || type === 'admin';
 }
 
 export function getUserType(record = pb.authStore.record) {
