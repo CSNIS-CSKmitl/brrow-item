@@ -394,11 +394,16 @@
                 <b>ความเห็นจากอาจารย์:</b> {request.teacherComment}
               </p>
             {/if}
-            {#if (request.asset_tags || request.adminComment)}
+            {#if request.status === 'rejected' && request.adminComment}
+              <p class="rounded-lg bg-rose-50 border border-rose-200 px-3 py-2 text-sm text-rose-800">
+                <b>เหตุผลที่ไม่อนุมัติ (ผู้ดูแล):</b> {request.adminComment}
+              </p>
+            {/if}
+            {#if request.asset_tags || (request.status !== 'rejected' && request.adminComment)}
               <div class="rounded-lg bg-[#f4f7f4] border border-[#dbe7dc] px-3 py-2 text-sm text-[#355238]">
-                <span class="text-xs font-bold text-sage">หมายเลขเครื่อง / MAC Address:</span>
+                <span class="text-xs font-bold text-sage">หมายเลขเครื่อง / เลขครุภัณฑ์ / MAC Address:</span>
                 <div class="mt-1 flex flex-wrap items-center gap-1.5">
-                  {#each (request.asset_tags || request.adminComment || '').split(',').map((s) => s.trim()).filter(Boolean) as mac}
+                  {#each (request.asset_tags || (request.status !== 'rejected' ? request.adminComment : '') || '').split(',').map((s) => s.trim()).filter(Boolean) as mac}
                     <span class="inline-flex items-center font-mono text-xs font-bold bg-white border border-[#c6d7c7] px-2.5 py-1 rounded-md text-ink shadow-2xs">
                       {mac}
                     </span>

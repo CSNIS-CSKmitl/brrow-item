@@ -187,22 +187,21 @@ export async function updateLoanStatus(id, status, comment = '') {
       data.rejectedAt = new Date().toISOString();
     }
   } else {
-    // Superadmin บันทึกหมายเลข MAC Address หรือข้อความตอนอนุมัติ/ปฏิเสธ
-    if (trimmed) {
-      data.adminComment = trimmed;
-      data.asset_tags = trimmed;
+    // ผู้ดูแล/Admin:
+    // ถ้าอนุมัติ -> บันทึกเลขครุภัณฑ์ / หมายเลขเครื่อง / MAC Address ลงใน asset_tags
+    // ถ้าไม่อนุมัติ -> บันทึกเหตุผลลงใน adminComment
+    if (status === 'approved') {
+      if (trimmed) data.asset_tags = trimmed;
+      data.approvedAt = new Date().toISOString();
+    } else if (status === 'rejected') {
+      if (trimmed) data.adminComment = trimmed;
+      data.rejectedAt = new Date().toISOString();
+    } else if (status === 'returned') {
+      data.returnedAt = new Date().toISOString();
     }
+
     if (status === 'approved' || status === 'rejected' || status === 'returned') {
       if (user) data.caretaker = user;
-    }
-    if (status === 'approved') {
-      data.approvedAt = new Date().toISOString();
-    }
-    if (status === 'rejected') {
-      data.rejectedAt = new Date().toISOString();
-    }
-    if (status === 'returned') {
-      data.returnedAt = new Date().toISOString();
     }
   }
 
