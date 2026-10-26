@@ -92,6 +92,18 @@ async function run() {
   // Check field maxSelect in loan_requests
   const reqFields = structuredClone(loanReqCol.fields);
   let fieldsChanged = false;
+
+  // Drop redundant fields: approved_at (use approvedAt), approved_by (use caretaker), created_by (use requester), updated_by
+  const redundantFields = ['approved_at', 'approved_by', 'created_by', 'updated_by'];
+  for (const rName of redundantFields) {
+    const idx = reqFields.findIndex(f => f.name === rName);
+    if (idx !== -1) {
+      console.log(`[loan_requests] Drop redundant field: "${rName}"`);
+      reqFields.splice(idx, 1);
+      fieldsChanged = true;
+    }
+  }
+
   for (const fieldName of ['requester', 'teacher', 'caretaker']) {
     const f = reqFields.find(f => f.name === fieldName);
     if (f && f.maxSelect === 0) {

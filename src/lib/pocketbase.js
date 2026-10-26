@@ -123,14 +123,9 @@ export async function createLoanRequest({ itemIds, items, quantities, borrowerNa
     teacher: isTeacher || isAdmin ? currentUser?.id : teacher,
     status: isTeacher ? 'pending_caretaker' : isAdmin ? 'approved' : 'pending_teacher'
   };
-  request.created_by = currentUser?.id;
-  request.updated_by = currentUser?.id;
-
   if (isAdmin) {
     request.caretaker = currentUser?.id;
     request.approvedAt = new Date().toISOString();
-    request.approved_by = currentUser?.id;
-    request.approved_at = request.approvedAt;
   }
 
   const created = await pb.collection('loan_requests').create(request);
@@ -162,7 +157,7 @@ export async function getLoanRequests(status = '', teacherId = null) {
   if (status) filters.push(`status = "${status}"`);
   if (teacherId) filters.push(`teacher = "${teacherId}"`);
   const filter = filters.join(' && ');
-  return pb.collection('loan_requests').getFullList({ filter, sort: '-created', expand: 'requester,teacher,caretaker,items,created_by,updated_by,approved_by', requestKey: null });
+  return pb.collection('loan_requests').getFullList({ filter, sort: '-created', expand: 'requester,teacher,caretaker,items', requestKey: null });
 }
 
 export async function getMyLoanRequests() {
@@ -171,7 +166,7 @@ export async function getMyLoanRequests() {
   return pb.collection('loan_requests').getFullList({
     filter: `requester = "${userId}"`,
     sort: '-created',
-    expand: 'requester,teacher,caretaker,items,created_by,updated_by,approved_by',
+    expand: 'requester,teacher,caretaker,items',
     requestKey: null
   });
 }
@@ -202,8 +197,6 @@ export async function updateLoanStatus(id, status, comment = '') {
     }
     if (status === 'approved') {
       data.approvedAt = new Date().toISOString();
-      data.approved_by = user || undefined;
-      data.approved_at = data.approvedAt;
     }
     if (status === 'rejected') {
       data.rejectedAt = new Date().toISOString();
@@ -286,8 +279,7 @@ export async function markLoanReturned(id, comment = '') {
 }
 
 export async function updateMyLoanRequest(id, { dueDate, note, teacher, quantities }) {
-  const user = pb.authStore.record?.id;
-  return pb.collection('loan_requests').update(id, { dueDate, note, teacher, quantities, updated_by: user || undefined }, { expand: 'requester,teacher,caretaker,items,created_by,updated_by,approved_by' });
+  return pb.collection('loan_requests').update(id, { dueDate, note, teacher, quantities }, { expand: 'requester,teacher,caretaker,items' });
 }
 
 export async function cancelLoanRequest(id) {
@@ -295,8 +287,19 @@ export async function cancelLoanRequest(id) {
 }
 
 export async function updateLoanQuantities(id, quantities) {
-  const user = pb.authStore.record?.id;
-  return pb.collection('loan_requests').update(id, { quantities, updated_by: user || undefined }, { expand: 'requester,teacher,caretaker,items,created_by,updated_by,approved_by' });
+  const updated = await pb.collection('loan_requests').update(id, { quantities }, { expand: 'requester,teacher,caretaker,items' });
+  try {
+    const loanItems = await pb.collection('loan_items').getFullList({ filter: `request = "${id}"` });
+    for (const [itemId, qty] of Object.entries(quantities)) {
+      const match = loanItems.find((li) => li.item === itemId);
+      if (match) {
+        await pb.collection('loan_items').update(match.id, { quantity: Number(qty) || 1 });
+      }
+    }
+  } catch (err) {
+    console.warn('[loan_items] Quantity sync failed:', err);
+  }
+  return updated;
 }
 
 export async function createItem(data) {
