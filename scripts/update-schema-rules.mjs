@@ -48,7 +48,7 @@ async function run() {
   await pb.collection('_superusers').authWithPassword(adminEmail, adminPassword);
   console.log(`Connected to PocketBase at ${targetUrl} as ${adminEmail}`);
 
-  // 1. Update loan_requests rules and fields
+  // 1. Update loan_requests rules, fields, and indexes
   console.log('\n--- 1. Checking loan_requests ---');
   const loanReqCol = await pb.collections.getOne('loan_requests');
   
@@ -124,6 +124,26 @@ async function run() {
     reqChanged = true;
   }
 
+  // Check loan_requests indexes
+  const reqIndexes = loanReqCol.indexes || [];
+  const expectedReqIndexes = [
+    'CREATE INDEX idx_loan_requests_status ON loan_requests (status)',
+    'CREATE INDEX idx_loan_requests_requester ON loan_requests (requester)',
+    'CREATE INDEX idx_loan_requests_teacher ON loan_requests (teacher)',
+    'CREATE INDEX idx_loan_requests_created ON loan_requests (created)'
+  ];
+  let newReqIndexes = [...reqIndexes];
+  for (const exp of expectedReqIndexes) {
+    if (!newReqIndexes.some(idx => idx.replace(/\s+/g, ' ').trim() === exp.replace(/\s+/g, ' ').trim())) {
+      console.log(`[loan_requests] Add index: ${exp}`);
+      newReqIndexes.push(exp);
+      reqChanged = true;
+    }
+  }
+  if (newReqIndexes.length !== reqIndexes.length) {
+    reqPatch.indexes = newReqIndexes;
+  }
+
   if (reqChanged) {
     if (apply) {
       await pb.collections.update(loanReqCol.id, reqPatch);
@@ -193,6 +213,38 @@ async function run() {
     } else {
       console.log('✅ [loan_items] Schema and rules are already up to date');
     }
+  }
+
+  // 3. Update items rules (Superadmin ONLY: 000000000000009)
+  console.log('\n--- 3. Checking items (superadmin only) ---');
+  const itemsCol = await pb.collections.getOne('items');
+  const targetItemsRules = {
+    listRule: '@request.auth.id != ""',
+    viewRule: '@request.auth.id != ""',
+    createRule: '@request.auth.id != "" && (@request.auth.user_type.type = "superadmin" || @request.auth.user_type = "000000000000009")',
+    updateRule: '@request.auth.id != "" && (@request.auth.user_type.type = "superadmin" || @request.auth.user_type = "000000000000009")',
+    deleteRule: '@request.auth.id != "" && (@request.auth.user_type.type = "superadmin" || @request.auth.user_type = "000000000000009")'
+  };
+
+  let itemsChanged = false;
+  let itemsPatch = {};
+  for (const [rKey, rVal] of Object.entries(targetItemsRules)) {
+    if (itemsCol[rKey] !== rVal) {
+      console.log(`[items] Update ${rKey}: superadmin only`);
+      itemsPatch[rKey] = rVal;
+      itemsChanged = true;
+    }
+  }
+
+  if (itemsChanged) {
+    if (apply) {
+      await pb.collections.update(itemsCol.id, itemsPatch);
+      console.log('✅ [items] Successfully updated items rules for superadmin');
+    } else {
+      console.log('ℹ️  [items] Changes pending (use --apply to execute)');
+    }
+  } else {
+    console.log('✅ [items] Rules already up to date for superadmin');
   }
 
   console.log(`\n=== Migration ${apply ? 'COMPLETE' : 'DRY RUN FINISHED (use --apply to execute)'} ===`);

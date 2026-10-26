@@ -83,9 +83,12 @@ export function logout() {
 }
 
 export function isSuperadmin(record = pb.authStore.record) {
-  // Application authorization is based only on the user's `user_type` role.
-  // PocketBase `_superusers` are backend service accounts and must never grant
-  // access to the Borrowly admin UI.
+  // Only superadmin role (user_type 000000000000009) can modify items inventory
+  return getUserType(record) === 'superadmin';
+}
+
+export function isAdmin(record = pb.authStore.record) {
+  // Both admin (000000000000000) and superadmin (000000000000009) can manage loan requests
   const type = getUserType(record);
   return type === 'superadmin' || type === 'admin';
 }
@@ -108,7 +111,7 @@ export async function getItems() {
 export async function createLoanRequest({ itemIds, items, quantities, borrowerName, email, dueDate, note, teacher }) {
   const currentUser = pb.authStore.record;
   const isTeacher = getUserType(currentUser) === 'teachers';
-  const isAdmin = isSuperadmin(currentUser);
+  const isAdm = isAdmin(currentUser);
 
   const request = {
     items: items || itemIds,
@@ -120,10 +123,10 @@ export async function createLoanRequest({ itemIds, items, quantities, borrowerNa
     requester: currentUser?.id,
     // ถ้า role เป็น อจ ให้ส่งตรงไปรอ admin อนุมัติ (status: pending_caretaker)
     // ถ้า role เป็น นักศึกษา ให้ส่งไปรอ อจ. รับทราบก่อน (status: pending_teacher)
-    teacher: isTeacher || isAdmin ? currentUser?.id : teacher,
-    status: isTeacher ? 'pending_caretaker' : isAdmin ? 'approved' : 'pending_teacher'
+    teacher: isTeacher || isAdm ? currentUser?.id : teacher,
+    status: isTeacher ? 'pending_caretaker' : isAdm ? 'approved' : 'pending_teacher'
   };
-  if (isAdmin) {
+  if (isAdm) {
     request.caretaker = currentUser?.id;
     request.approvedAt = new Date().toISOString();
   }
@@ -172,7 +175,7 @@ export async function getMyLoanRequests() {
 }
 
 export async function updateLoanStatus(id, status, comment = '') {
-  if (status === 'returned' && !isSuperadmin()) {
+  if (status === 'returned' && !isAdmin()) {
     throw new Error('เฉพาะผู้ดูแลระบบเท่านั้นที่บันทึกการคืนของได้');
   }
   const user = pb.authStore.record?.id;
