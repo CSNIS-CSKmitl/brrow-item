@@ -1,13 +1,41 @@
 import PocketBase from 'pocketbase';
+import fs from 'node:fs';
+import path from 'node:path';
+
+// Automatically load .env if available
+try {
+  const envPath = path.resolve(process.cwd(), '.env');
+  if (fs.existsSync(envPath)) {
+    const lines = fs.readFileSync(envPath, 'utf8').split('\n');
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const idx = trimmed.indexOf('=');
+      if (idx !== -1) {
+        const key = trimmed.slice(0, idx).trim();
+        const val = trimmed.slice(idx + 1).trim().replace(/^["']|["']$/g, '');
+        if (!process.env[key]) {
+          process.env[key] = val;
+        }
+      }
+    }
+  }
+} catch (e) {
+  // Ignore env read error
+}
 
 const apply = process.argv.includes('--apply');
-const targetUrl = process.env.POCKETBASE_URL || process.env.VITE_POCKETBASE_TARGET || 'http://127.0.0.1:8090';
+const customUrlArg = process.argv.find(arg => arg.startsWith('--url='));
+const targetUrl = customUrlArg
+  ? customUrlArg.split('=')[1]
+  : (process.env.POCKETBASE_URL || process.env.VITE_POCKETBASE_TARGET || process.env.VITE_POCKETBASE_URL || 'http://192.168.15.14:8080');
+
 const adminEmail = process.env.PB_ADMIN_EMAIL;
 const adminPassword = process.env.PB_ADMIN_PASSWORD;
 
 if (!adminEmail || !adminPassword) {
   console.warn('⚠️  PB_ADMIN_EMAIL or PB_ADMIN_PASSWORD not set in environment.');
-  console.warn('   Run with: PB_ADMIN_EMAIL=admin@example.com PB_ADMIN_PASSWORD=secret node scripts/update-schema-rules.mjs [--apply]');
+  console.warn('   Run with: $env:PB_ADMIN_EMAIL="admin@cskmitl.com"; $env:PB_ADMIN_PASSWORD="secret"; node scripts/update-schema-rules.mjs --apply');
 }
 
 async function run() {
