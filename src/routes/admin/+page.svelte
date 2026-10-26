@@ -504,7 +504,7 @@
                 </p>
               {/if}
               <p class="text-xs text-[#9aa29b]">ผู้ส่งคำขอ: {request.expand?.requester?.name || request.borrowerName || '-'} · วันที่สร้าง: {formatDateTime(request.created)}</p>
-              {#if request.caretaker || request.approved_by}<p class="text-sm text-emerald-800">อนุมัติโดย: <b>{request.expand?.caretaker?.name || request.expand?.approved_by?.name || request.expand?.caretaker?.email || request.caretaker}</b></p>{/if}
+              {#if (request.status === 'approved' || request.status === 'returned') && (request.caretaker || request.approved_by)}<p class="text-sm text-emerald-800">อนุมัติโดย: <b>{request.expand?.caretaker?.name || request.expand?.approved_by?.name || request.expand?.caretaker?.email || request.caretaker}</b></p>{/if}
               {#if request.returnedAt}
                 <p class="text-sm text-teal-800">
                   คืนของเมื่อ: <b>{formatDateTime(request.returnedAt)}</b>

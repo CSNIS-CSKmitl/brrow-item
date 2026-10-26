@@ -200,7 +200,7 @@ export async function updateLoanStatus(id, status, comment = '') {
       data.returnedAt = new Date().toISOString();
     }
 
-    if (status === 'approved' || status === 'rejected' || status === 'returned') {
+    if (status === 'approved' || status === 'returned') {
       if (user) data.caretaker = user;
     }
   }
@@ -264,6 +264,16 @@ export async function updateLoanStatus(id, status, comment = '') {
       const items = await pb.collection('loan_items').getFullList({ filter: `request = "${id}"` });
       for (const it of items) {
         await pb.collection('loan_items').update(it.id, { status: 'borrowed' });
+      }
+    } else if (status === 'rejected') {
+      const items = await pb.collection('loan_items').getFullList({ filter: `request = "${id}"` });
+      for (const it of items) {
+        await pb.collection('loan_items').update(it.id, { status: 'rejected' });
+      }
+    } else if (status === 'cancelled') {
+      const items = await pb.collection('loan_items').getFullList({ filter: `request = "${id}"` });
+      for (const it of items) {
+        await pb.collection('loan_items').update(it.id, { status: 'cancelled' });
       }
     }
   } catch (err) {
