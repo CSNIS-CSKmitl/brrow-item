@@ -240,13 +240,14 @@
   }
 
   // --- Items Management State ---
-  const emptyForm = () => ({ name: '', category: 'อุปกรณ์ไอที', description: '', image: '', available: 1, total: 1, location: '' });
+  const emptyForm = () => ({ name: '', category: 'อุปกรณ์ไอที', description: '', image: '', available: 1, total: 1, location: '', is_active: true });
   let form = emptyForm();
   let itemError = '';
   let itemSuccess = '';
   let editingItemId = '';
   let saving = false;
   let deletingId = '';
+  let itemFilter = 'all'; // 'all' | 'active' | 'archived'
 
   function startEditItem(item) {
     editingItemId = item.id;
@@ -260,6 +261,7 @@
       available: Number(item.available ?? 0),
       total: Number(item.total ?? 1),
       location: item.location || '',
+      is_active: item.is_active !== false,
     };
   }
 
@@ -286,11 +288,12 @@
         image: form.image?.trim() || '',
         total,
         available,
-        location: form.location?.trim() || ''
+        location: form.location?.trim() || '',
+        is_active: Boolean(form.is_active),
       };
       if (editingItemId) {
         const updated = await updateItem(editingItemId, data);
-        items.update((list) => list.map((entry) => entry.id === updated.id ? updated : entry));
+        items.update((list) => list.map((entry) => (entry.id === updated.id ? updated : entry)));
         cancelEditItem();
         itemSuccess = `บันทึกการแก้ไข "${updated.name}" เรียบร้อยแล้ว`;
       } else {
@@ -308,20 +311,56 @@
     }
   }
 
-  async function removeItem(item) {
-    if (!confirm(`ลบ ${item.name} ใช่ไหม?`)) return;
+  async function toggleItemStatus(item, activate) {
     itemError = '';
+    itemSuccess = '';
     deletingId = item.id;
     try {
-      await deleteItem(item.id);
-      items.update((list) => list.filter((entry) => entry.id !== item.id));
-      if (editingItemId === item.id) cancelEditItem();
+      const updated = await updateItem(item.id, { is_active: activate });
+      items.update((list) => list.map((entry) => (entry.id === updated.id ? updated : entry)));
+      itemSuccess = activate
+        ? `เปิดใช้งาน "${item.name}" ให้ยืมในระบบแล้ว`
+        : `ยกเลิกการใช้งาน "${item.name}" (ซ่อนจากผู้ยืม) เรียบร้อยแล้ว`;
     } catch (cause) {
-      itemError = cause?.response?.message || 'ลบรายการไม่สำเร็จ กรุณาตรวจสอบสิทธิ์ PocketBase';
+      itemError = cause?.response?.message || 'ปรับสถานะอุปกรณ์ไม่สำเร็จ กรุณาตรวจสอบสิทธิ์ PocketBase';
     } finally {
       deletingId = '';
     }
   }
+
+  async function removeItem(item) {
+    if (!confirm(`ต้องการลบ "${item.name}" ใช่ไหม?`)) return;
+    itemError = '';
+    itemSuccess = '';
+    deletingId = item.id;
+    try {
+      // ลองลบจริงออกจาก DB ก่อน (กรณีของใหม่ที่ยังไม่เคยมีประวัติการยืม จะลบได้สำเร็จ)
+      await deleteItem(item.id);
+      items.update((list) => list.filter((entry) => entry.id !== item.id));
+      if (editingItemId === item.id) cancelEditItem();
+      itemSuccess = `ลบ "${item.name}" ออกจากระบบเรียบร้อยแล้ว`;
+    } catch (cause) {
+      // หากลบไม่สำเร็จเนื่องจากติดประวัติการยืมใน DB (เคยถูกยืมและคืนแล้ว)
+      // ให้ทำ Soft Delete โดยอัตโนมัติ เพื่อให้ประวัติการยืมเดิมไม่พัง
+      console.warn('Hard delete failed, falling back to soft delete:', cause);
+      try {
+        const updated = await updateItem(item.id, { is_active: false });
+        items.update((list) => list.map((entry) => (entry.id === updated.id ? updated : entry)));
+        if (editingItemId === item.id) cancelEditItem();
+        itemSuccess = `เนื่องจาก "${item.name}" มีประวัติการยืมในระบบแล้ว จึงเปลี่ยนสถานะเป็น "ยกเลิกใช้งาน (ซ่อน)" เพื่อรักษาประวัติการยืมเดิมไว้`;
+      } catch (softErr) {
+        itemError = softErr?.response?.message || cause?.response?.message || 'ลบรายการไม่สำเร็จ กรุณาตรวจสอบสิทธิ์ PocketBase';
+      }
+    } finally {
+      deletingId = '';
+    }
+  }
+
+  $: displayedItems = $items.filter((item) => {
+    if (itemFilter === 'active') return item.is_active !== false;
+    if (itemFilter === 'archived') return item.is_active === false;
+    return true;
+  });
 </script>
 
 <main class="mx-auto max-w-7xl px-5 py-12 lg:px-8">
@@ -666,6 +705,10 @@
           <label>พร้อมให้ยืม<input type="number" min="0" step="1" bind:value={form.available} required /></label>
         </div>
         <label>สถานที่จัดเก็บ<input bind:value={form.location} placeholder="เช่น ห้อง 301" /></label>
+        <label class="flex items-center gap-2 cursor-pointer pt-1">
+          <input type="checkbox" bind:checked={form.is_active} class="h-4 w-4 rounded border-[#c4d6c5] text-sage focus:ring-sage" />
+          <span class="text-sm font-semibold text-ink">เปิดให้ยืมในแคตตาล็อก (Active)</span>
+        </label>
         {#if itemError}
           <p class="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{itemError}</p>
         {/if}
@@ -684,21 +727,79 @@
       </form>
 
       <div class="space-y-3">
-        {#if $items.length === 0}
+        <!-- Item Filter Tabs -->
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-[#e4e5de] pb-3">
+          <div class="flex gap-1.5">
+            <button
+              type="button"
+              class="rounded-lg px-3 py-1 text-xs font-bold transition {itemFilter === 'all' ? 'bg-[#3b453e] text-white shadow-xs' : 'bg-[#f0f4ef] text-[#5e6960] hover:bg-[#e4ede3]'}"
+              on:click={() => (itemFilter = 'all')}
+            >
+              ทั้งหมด ({$items.length})
+            </button>
+            <button
+              type="button"
+              class="rounded-lg px-3 py-1 text-xs font-bold transition {itemFilter === 'active' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-[#f0f4ef] text-[#5e6960] hover:bg-[#e4ede3]'}"
+              on:click={() => (itemFilter = 'active')}
+            >
+              เปิดให้ยืม ({$items.filter((i) => i.is_active !== false).length})
+            </button>
+            <button
+              type="button"
+              class="rounded-lg px-3 py-1 text-xs font-bold transition {itemFilter === 'archived' ? 'bg-amber-700 text-white shadow-xs' : 'bg-[#f0f4ef] text-[#5e6960] hover:bg-[#e4ede3]'}"
+              on:click={() => (itemFilter = 'archived')}
+            >
+              ยกเลิกใช้งานแล้ว ({$items.filter((i) => i.is_active === false).length})
+            </button>
+          </div>
+        </div>
+
+        {#if displayedItems.length === 0}
           <div class="rounded-2xl border border-dashed border-[#d8d8d0] py-16 text-center text-[#7c857e]">
-            ยังไม่มีของในระบบ เพิ่มรายการแรกจากฟอร์มนี้ได้เลย
+            {itemFilter === 'archived' ? 'ไม่มีรายการอุปกรณ์ที่ยกเลิกใช้งาน' : 'ยังไม่มีของในระบบ เพิ่มรายการแรกจากฟอร์มนี้ได้เลย'}
           </div>
         {/if}
-        {#each $items as item}
-          <div class="flex items-center gap-4 rounded-2xl border border-[#e4e5de] bg-white p-4 shadow-sm">
+        {#each displayedItems as item}
+          <div class="flex items-center gap-4 rounded-2xl border border-[#e4e5de] bg-white p-4 shadow-sm {item.is_active === false ? 'bg-amber-50/40 border-amber-200/60 opacity-80' : ''}">
             <img src={item.image} alt="" class="h-16 w-16 rounded-xl object-cover" />
             <div class="min-w-0 flex-1">
-              <h3 class="font-bold text-ink">{item.name}</h3>
+              <div class="flex items-center gap-2">
+                <h3 class="font-bold text-ink {item.is_active === false ? 'line-through text-gray-500' : ''}">{item.name}</h3>
+                {#if item.is_active === false}
+                  <span class="inline-flex items-center rounded-md bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
+                    ยกเลิกใช้งาน (ซ่อน)
+                  </span>
+                {/if}
+              </div>
               <p class="mt-1 text-xs text-[#7c857e]">{item.category} · ว่าง {item.available}/{item.total} ชิ้น · {item.location || 'ไม่ระบุสถานที่'}</p>
               {#if Number(item.available) > Number(item.total)}
                 <p class="mt-1 text-xs font-bold text-rose-700">ข้อมูลไม่ถูกต้อง: จำนวนว่างมากกว่าจำนวนทั้งหมด กรุณาแก้ไขรายการนี้</p>
               {/if}
             </div>
+
+            <!-- Soft delete / Restore toggle button -->
+            {#if item.is_active === false}
+              <button
+                type="button"
+                class="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 transition"
+                title="นำกลับมาเปิดให้ยืมอีกครั้ง"
+                disabled={deletingId === item.id}
+                on:click={() => toggleItemStatus(item, true)}
+              >
+                <RotateCcw size={14} /> เปิดใช้งาน
+              </button>
+            {:else}
+              <button
+                type="button"
+                class="inline-flex items-center gap-1 rounded-lg border border-[#c8d4c9] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#576459] hover:bg-[#f0f4ef] transition"
+                title="ซ่อนออกจากแคตตาล็อก (ไม่ให้ยืมต่อ)"
+                disabled={deletingId === item.id}
+                on:click={() => toggleItemStatus(item, false)}
+              >
+                ซ่อน/เลิกใช้
+              </button>
+            {/if}
+
             {#if isAdmin($user) || getUserType($user) === 'superadmin'}
               <button
                 type="button"
@@ -715,6 +816,7 @@
               class="icon-btn text-red-500 disabled:cursor-not-allowed disabled:opacity-50"
               aria-label="ลบ {item.name}"
               disabled={deletingId === item.id}
+              title="ลบรายการ"
               on:click={() => removeItem(item)}
             >
               <Trash2 size={17} />

@@ -557,6 +557,14 @@
         "required": false,
         "system": false,
         "type": "relation"
+      },
+      {
+        "name": "is_active",
+        "type": "bool",
+        "required": false,
+        "presentable": false,
+        "system": false,
+        "hidden": false
       }
     ],
     "indexes": [],

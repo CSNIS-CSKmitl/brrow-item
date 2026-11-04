@@ -315,7 +315,12 @@ export async function updateLoanQuantities(id, quantities) {
 
 export async function createItem(data) {
   const user = pb.authStore.record?.id;
-  return pb.collection('items').create({ ...data, created_by: user || undefined, updated_by: user || undefined });
+  return pb.collection('items').create({
+    is_active: true,
+    ...data,
+    created_by: user || undefined,
+    updated_by: user || undefined
+  });
 }
 
 export async function updateItem(id, data) {
@@ -325,4 +330,9 @@ export async function updateItem(id, data) {
 
 export async function deleteItem(id) {
   return pb.collection('items').delete(id);
+}
+
+export async function archiveItem(id, is_active = false) {
+  const user = pb.authStore.record?.id;
+  return pb.collection('items').update(id, { is_active, updated_by: user || undefined });
 }

@@ -368,7 +368,7 @@ export function computeAdminStats({ items = [], requests = [], range = 'all', no
 
   return {
     range,
-    items: safeItems.length,
+    items: safeItems.filter((i) => i.is_active !== false).length,
     totalUnits,
     availableUnits,
     borrowedUnits,

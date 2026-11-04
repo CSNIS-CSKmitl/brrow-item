@@ -12,6 +12,7 @@
 
   $: filteredItems = $items.filter(
     (item) =>
+      item.is_active !== false &&
       (activeCategory === "ทั้งหมด" || item.category === activeCategory) &&
       `${item.name} ${item.description}`
         .toLowerCase()

@@ -4,6 +4,7 @@
   import { items, itemsLoaded, itemsLoading, selectedItems, toggleItem } from "../../lib/stores.js";
 
   let detailItem = null;
+  $: activeItems = $items.filter((item) => item.is_active !== false);
 </script>
 
 <main class="mx-auto max-w-7xl px-5 py-12 lg:px-8">
@@ -23,13 +24,13 @@
         </div>
       {/each}
     </div>
-  {:else if $items.length === 0}
+  {:else if activeItems.length === 0}
     <div class="rounded-2xl border border-dashed border-[#d8d8d0] py-16 text-center text-[#7c857e]">
       ยังไม่มีของให้ยืมในระบบ
     </div>
   {:else}
     <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-      {#each $items as item}
+      {#each activeItems as item}
         <ItemCard
           {item}
           selected={$selectedItems.some((selected) => selected.id === item.id)}
