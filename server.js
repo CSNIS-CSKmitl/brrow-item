@@ -242,7 +242,7 @@ const server = createServer(async (req, res) => {
       return;
     }
     const user = await getSessionUser(req);
-    if (!user || user.role !== 'superadmin') {
+    if (!user || (user.role !== 'superadmin' && user.role !== 'admin')) {
       jsonResponse(res, user ? 403 : 401, { ok: false, error: user ? 'forbidden' : 'authentication required' });
       return;
     }

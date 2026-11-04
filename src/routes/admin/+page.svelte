@@ -5,7 +5,7 @@
   import AdminStats from '../../lib/components/AdminStats.svelte';
   import { items as mockItems } from '../../lib/mock-data.js';
   import { items, user, teachers, loadItems } from '../../lib/stores.js';
-  import { createItem, updateItem, deleteItem, getLoanRequests, updateLoanStatus, markLoanReturned, getUserType, pb } from '../../lib/pocketbase.js';
+  import { createItem, updateItem, deleteItem, getLoanRequests, updateLoanStatus, markLoanReturned, getUserType, isAdmin, pb } from '../../lib/pocketbase.js';
   import { exportRequestsToCSV, exportSingleRequestToCSV, exportItemsToCSV, formatDateTime } from '../../lib/csv.js';
   import { getStatusBadgeClass, getStatusDotClass } from '../../lib/status.js';
   import {
@@ -370,7 +370,7 @@
       {/if}
     </button>
 
-    {#if getUserType($user) === 'superadmin'}
+    {#if isAdmin($user) || getUserType($user) === 'superadmin'}
       <button
         type="button"
         class="flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold transition {activeMainTab === 'items' ? 'bg-sage text-white shadow-sm' : 'bg-white text-[#68726b] hover:bg-[#f3f6f3]'}"
@@ -635,7 +635,7 @@
   {/if}
 
   <!-- TAB 2: ITEMS MANAGEMENT -->
-  {#if activeMainTab === 'items' && getUserType($user) === 'superadmin'}
+  {#if activeMainTab === 'items' && (isAdmin($user) || getUserType($user) === 'superadmin')}
     <div class="grid gap-8 lg:grid-cols-[380px_1fr]">
       <form class="h-fit space-y-4 rounded-2xl border border-[#e4e5de] bg-white p-6 shadow-sm" on:submit|preventDefault={submitItem}>
         <div class="flex items-center justify-between gap-3">
@@ -683,7 +683,7 @@
                 <p class="mt-1 text-xs font-bold text-rose-700">ข้อมูลไม่ถูกต้อง: จำนวนว่างมากกว่าจำนวนทั้งหมด กรุณาแก้ไขรายการนี้</p>
               {/if}
             </div>
-            {#if getUserType($user) === 'superadmin'}
+            {#if isAdmin($user) || getUserType($user) === 'superadmin'}
               <button
                 type="button"
                 class="icon-btn text-sage"

@@ -48,17 +48,17 @@ async function run() {
   await pb.collection('_superusers').authWithPassword(adminEmail, adminPassword);
   console.log(`Connected to PocketBase at ${targetUrl} as ${adminEmail}`);
 
-  // 1. Update loan_requests rules (Superadmin only for approval/caretaking, admin is normal user)
+  // 1. Update loan_requests rules (Both admin and superadmin)
   console.log('\n--- 1. Checking loan_requests ---');
   const loanReqCol = await pb.collections.getOne('loan_requests');
   
-  const targetLoanReqListRule = '@request.auth.id != "" && (requester = @request.auth.id || teacher = @request.auth.id || caretaker = @request.auth.id || @request.auth.user_type.type = "superadmin")';
-  const targetLoanReqViewRule = '@request.auth.id != "" && (requester = @request.auth.id || teacher = @request.auth.id || caretaker = @request.auth.id || @request.auth.user_type.type = "superadmin")';
-  const targetLoanReqDeleteRule = '@request.auth.id != "" && @request.auth.user_type.type = "superadmin"';
+  const targetLoanReqListRule = '@request.auth.id != "" && (requester = @request.auth.id || teacher = @request.auth.id || caretaker = @request.auth.id || @request.auth.user_type.type = "superadmin" || @request.auth.user_type.type = "admin" || @request.auth.user_type = "000000000000009" || @request.auth.user_type = "000000000000000")';
+  const targetLoanReqViewRule = '@request.auth.id != "" && (requester = @request.auth.id || teacher = @request.auth.id || caretaker = @request.auth.id || @request.auth.user_type.type = "superadmin" || @request.auth.user_type.type = "admin" || @request.auth.user_type = "000000000000009" || @request.auth.user_type = "000000000000000")';
+  const targetLoanReqDeleteRule = '@request.auth.id != "" && (@request.auth.user_type.type = "superadmin" || @request.auth.user_type.type = "admin" || @request.auth.user_type = "000000000000009" || @request.auth.user_type = "000000000000000")';
   
-  const targetLoanReqCreateRule = '@request.auth.id != "" && @request.body.requester = @request.auth.id && (@request.body.status = "pending_teacher" || (@request.auth.user_type.type = "teachers" && @request.body.status = "pending_caretaker" && @request.body.teacher = @request.auth.id) || (@request.auth.user_type.type = "superadmin" && @request.body.status = "approved" && @request.body.teacher = @request.auth.id && @request.body.caretaker = @request.auth.id))';
+  const targetLoanReqCreateRule = '@request.auth.id != "" && @request.body.requester = @request.auth.id && (@request.body.status = "pending_teacher" || (@request.auth.user_type.type = "teachers" && @request.body.status = "pending_caretaker" && @request.body.teacher = @request.auth.id) || ((@request.auth.user_type.type = "superadmin" || @request.auth.user_type.type = "admin" || @request.auth.user_type = "000000000000009" || @request.auth.user_type = "000000000000000") && @request.body.status = "approved" && @request.body.teacher = @request.auth.id && @request.body.caretaker = @request.auth.id))';
   
-  const targetLoanReqUpdateRule = '(requester = @request.auth.id && status = "pending_teacher" && (@request.body.status:changed = false || @request.body.status = "cancelled") && @request.body.requester:changed = false && @request.body.borrowerName:changed = false && @request.body.email:changed = false && @request.body.items:changed = false && @request.body.caretaker:changed = false && @request.body.teacherComment:changed = false && @request.body.adminComment:changed = false) || (teacher = @request.auth.id && @request.auth.user_type.type = "teachers" && status = "pending_teacher" && ((@request.body.status = "pending_caretaker" && @request.body.teacherComment:changed = false) || (@request.body.status = "rejected" && @request.body.teacherComment != "")) && @request.body.requester:changed = false && @request.body.borrowerName:changed = false && @request.body.email:changed = false && @request.body.items:changed = false && @request.body.dueDate:changed = false && @request.body.note:changed = false && @request.body.teacher:changed = false && @request.body.caretaker:changed = false && @request.body.adminComment:changed = false) || (@request.auth.user_type.type = "superadmin" && status = "pending_caretaker" && ((@request.body.status = "approved" && @request.body.teacherComment:changed = false) || (@request.body.status = "rejected" && @request.body.teacherComment:changed = false && @request.body.adminComment != ""))) || (@request.auth.user_type.type = "superadmin" && (status = "approved" || status = "returned") && @request.body.status = "returned")';
+  const targetLoanReqUpdateRule = '(requester = @request.auth.id && status = "pending_teacher" && (@request.body.status:changed = false || @request.body.status = "cancelled") && @request.body.requester:changed = false && @request.body.borrowerName:changed = false && @request.body.email:changed = false && @request.body.items:changed = false && @request.body.caretaker:changed = false && @request.body.teacherComment:changed = false && @request.body.adminComment:changed = false) || (teacher = @request.auth.id && @request.auth.user_type.type = "teachers" && status = "pending_teacher" && ((@request.body.status = "pending_caretaker" && @request.body.teacherComment:changed = false) || (@request.body.status = "rejected" && @request.body.teacherComment != "")) && @request.body.requester:changed = false && @request.body.borrowerName:changed = false && @request.body.email:changed = false && @request.body.items:changed = false && @request.body.dueDate:changed = false && @request.body.note:changed = false && @request.body.teacher:changed = false && @request.body.caretaker:changed = false && @request.body.adminComment:changed = false) || ((@request.auth.user_type.type = "superadmin" || @request.auth.user_type.type = "admin" || @request.auth.user_type = "000000000000009" || @request.auth.user_type = "000000000000000") && status = "pending_caretaker" && ((@request.body.status = "approved" && @request.body.teacherComment:changed = false) || (@request.body.status = "rejected" && @request.body.teacherComment:changed = false && @request.body.adminComment != ""))) || ((@request.auth.user_type.type = "superadmin" || @request.auth.user_type.type = "admin" || @request.auth.user_type = "000000000000009" || @request.auth.user_type = "000000000000000") && (status = "approved" || status = "returned") && @request.body.status = "returned")';
 
   let reqChanged = false;
   let reqPatch = {};
@@ -154,15 +154,15 @@ async function run() {
     console.log('✅ [loan_requests] Schema and rules are already up to date');
   }
 
-  // 2. Update loan_items rules (Superadmin only, admin is normal user)
+  // 2. Update loan_items rules (Both admin and superadmin)
   console.log('\n--- 2. Checking loan_items ---');
   const loanItemsCol = await pb.collections.getOne('loan_items');
   const targetItemRules = {
-    listRule: '@request.auth.id != "" && (request.requester = @request.auth.id || request.teacher = @request.auth.id || request.caretaker = @request.auth.id || @request.auth.user_type.type = "superadmin")',
-    viewRule: '@request.auth.id != "" && (request.requester = @request.auth.id || request.teacher = @request.auth.id || request.caretaker = @request.auth.id || @request.auth.user_type.type = "superadmin")',
-    createRule: '@request.auth.id != "" && (request.requester = @request.auth.id || @request.auth.user_type.type = "superadmin" || @request.auth.user_type.type = "teachers")',
-    updateRule: '@request.auth.id != "" && (@request.auth.user_type.type = "superadmin" || (request.requester = @request.auth.id && request.status = "pending_teacher"))',
-    deleteRule: '@request.auth.id != "" && (@request.auth.user_type.type = "superadmin" || (request.requester = @request.auth.id && request.status = "pending_teacher"))'
+    listRule: '@request.auth.id != "" && (request.requester = @request.auth.id || request.teacher = @request.auth.id || request.caretaker = @request.auth.id || @request.auth.user_type.type = "superadmin" || @request.auth.user_type.type = "admin" || @request.auth.user_type = "000000000000009" || @request.auth.user_type = "000000000000000")',
+    viewRule: '@request.auth.id != "" && (request.requester = @request.auth.id || request.teacher = @request.auth.id || request.caretaker = @request.auth.id || @request.auth.user_type.type = "superadmin" || @request.auth.user_type.type = "admin" || @request.auth.user_type = "000000000000009" || @request.auth.user_type = "000000000000000")',
+    createRule: '@request.auth.id != "" && (request.requester = @request.auth.id || @request.auth.user_type.type = "superadmin" || @request.auth.user_type.type = "admin" || @request.auth.user_type = "000000000000009" || @request.auth.user_type = "000000000000000" || @request.auth.user_type.type = "teachers")',
+    updateRule: '@request.auth.id != "" && (@request.auth.user_type.type = "superadmin" || @request.auth.user_type.type = "admin" || @request.auth.user_type = "000000000000009" || @request.auth.user_type = "000000000000000" || (request.requester = @request.auth.id && request.status = "pending_teacher"))',
+    deleteRule: '@request.auth.id != "" && (@request.auth.user_type.type = "superadmin" || @request.auth.user_type.type = "admin" || @request.auth.user_type = "000000000000009" || @request.auth.user_type = "000000000000000" || (request.requester = @request.auth.id && request.status = "pending_teacher"))'
   };
 
   if (loanItemsCol) {
@@ -207,15 +207,15 @@ async function run() {
     }
   }
 
-  // 3. Update items rules (Superadmin ONLY: 000000000000009)
-  console.log('\n--- 3. Checking items (superadmin only) ---');
+  // 3. Update items rules (Both superadmin and admin)
+  console.log('\n--- 3. Checking items (admin & superadmin) ---');
   const itemsCol = await pb.collections.getOne('items');
   const targetItemsRules = {
     listRule: '@request.auth.id != ""',
     viewRule: '@request.auth.id != ""',
-    createRule: '@request.auth.id != "" && (@request.auth.user_type.type = "superadmin" || @request.auth.user_type = "000000000000009")',
-    updateRule: '@request.auth.id != "" && (@request.auth.user_type.type = "superadmin" || @request.auth.user_type = "000000000000009")',
-    deleteRule: '@request.auth.id != "" && (@request.auth.user_type.type = "superadmin" || @request.auth.user_type = "000000000000009")'
+    createRule: '@request.auth.id != "" && (@request.auth.user_type.type = "superadmin" || @request.auth.user_type.type = "admin" || @request.auth.user_type = "000000000000009" || @request.auth.user_type = "000000000000000")',
+    updateRule: '@request.auth.id != "" && (@request.auth.user_type.type = "superadmin" || @request.auth.user_type.type = "admin" || @request.auth.user_type = "000000000000009" || @request.auth.user_type = "000000000000000")',
+    deleteRule: '@request.auth.id != "" && (@request.auth.user_type.type = "superadmin" || @request.auth.user_type.type = "admin" || @request.auth.user_type = "000000000000009" || @request.auth.user_type = "000000000000000")'
   };
 
   let itemsChanged = false;

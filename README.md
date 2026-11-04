@@ -92,7 +92,7 @@ npm run dev
 
 ข้อมูลที่แสดงประกอบด้วยจำนวนคำขอและผู้ยืม, อุปกรณ์พร้อมยืม, อุปกรณ์ยอดนิยม, แนวโน้มคำขอ และอัตราคืนตรงเวลา โดยอัปเดตจาก PocketBase realtime หลังโหลดครั้งแรก ไม่ต้องเพิ่ม collection สำหรับสถิติ
 
-หมายเหตุสำหรับ PocketBase ตัวปัจจุบัน: collection `users` ใช้ relation field ชื่อ `user_type` ไปยัง collection `user_type` และหน้า `/admin` อนุญาตเฉพาะ `user_type.type === "superadmin"` หรือ id `000000000000009`
+หมายเหตุสำหรับ PocketBase ตัวปัจจุบัน: collection `users` ใช้ relation field ชื่อ `user_type` ไปยัง collection `user_type` และหน้า `/admin` อนุญาตผู้ใช้ประเภท `admin` (id `000000000000000`) และ `superadmin` (id `000000000000009`)
 
 หน้า Login เรียก `listAuthMethods()` แล้วเลือก provider จาก `VITE_POCKETBASE_OIDC_PROVIDER` (ค่าเริ่มต้น `oidc`) ดังนั้นต้องเปิดและตั้งค่า OIDC provider ใน PocketBase ก่อน
 # brrow-item

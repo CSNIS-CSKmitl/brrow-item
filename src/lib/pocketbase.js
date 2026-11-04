@@ -83,14 +83,13 @@ export function logout() {
 }
 
 export function isSuperadmin(record = pb.authStore.record) {
-  // Only superadmin role (user_type 000000000000009) can modify items inventory
   return getUserType(record) === 'superadmin';
 }
 
 export function isAdmin(record = pb.authStore.record) {
-  // Regular admin is treated as normal user. Only superadmin (000000000000009) manages loan requests.
+  // Both admin (000000000000000 / 'admin') and superadmin (000000000000009 / 'superadmin') can manage loan requests and inventory
   const type = getUserType(record);
-  return type === 'superadmin';
+  return type === 'superadmin' || type === 'admin';
 }
 
 export function getUserType(record = pb.authStore.record) {
@@ -210,7 +209,7 @@ export async function updateLoanStatus(id, status, comment = '') {
 
   // Stock management for approved and returned status transitions
   let previousRecord = null;
-  if (isSuperadmin() && (status === 'approved' || status === 'returned')) {
+  if (isAdmin() && (status === 'approved' || status === 'returned')) {
     try {
       previousRecord = await pb.collection('loan_requests').getOne(id);
     } catch {}
@@ -228,7 +227,7 @@ export async function updateLoanStatus(id, status, comment = '') {
     }).catch(() => {});
   }
 
-  if (isSuperadmin() && previousRecord) {
+  if (isAdmin() && previousRecord) {
     const itemIdsToAdjust = Array.isArray(previousRecord.items) && previousRecord.items.length > 0
       ? previousRecord.items
       : (Array.isArray(previousRecord.itemIds) ? previousRecord.itemIds : []);
