@@ -236,7 +236,7 @@
                 </label>
                 {#if editError}<p class="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{editError}</p>{/if}
                 <div class="flex gap-2">
-                  <Button size="sm" disabled={saving || !editForm.teacher || !editForm.dueDate}>
+                  <Button type="submit" size="sm" disabled={saving || !editForm.teacher || !editForm.dueDate}>
                     {saving ? 'กำลังบันทึก...' : 'บันทึกการแก้ไข'}
                   </Button>
                 </div>

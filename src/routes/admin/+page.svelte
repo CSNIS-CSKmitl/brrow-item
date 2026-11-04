@@ -243,6 +243,7 @@
   const emptyForm = () => ({ name: '', category: 'อุปกรณ์ไอที', description: '', image: '', available: 1, total: 1, location: '' });
   let form = emptyForm();
   let itemError = '';
+  let itemSuccess = '';
   let editingItemId = '';
   let saving = false;
   let deletingId = '';
@@ -250,6 +251,7 @@
   function startEditItem(item) {
     editingItemId = item.id;
     itemError = '';
+    itemSuccess = '';
     form = {
       name: item.name || '',
       category: item.category || '',
@@ -277,15 +279,26 @@
     }
     saving = true;
     try {
-      const data = { ...form, total, available };
+      const data = {
+        name: form.name?.trim() || '',
+        category: form.category?.trim() || 'อุปกรณ์ไอที',
+        description: form.description?.trim() || '',
+        image: form.image?.trim() || '',
+        total,
+        available,
+        location: form.location?.trim() || ''
+      };
       if (editingItemId) {
         const updated = await updateItem(editingItemId, data);
         items.update((list) => list.map((entry) => entry.id === updated.id ? updated : entry));
+        cancelEditItem();
+        itemSuccess = `บันทึกการแก้ไข "${updated.name}" เรียบร้อยแล้ว`;
       } else {
         const created = await createItem(data);
         items.update((list) => [created, ...list]);
+        cancelEditItem();
+        itemSuccess = `เพิ่มรายการ "${created.name}" เรียบร้อยแล้ว`;
       }
-      cancelEditItem();
     } catch (cause) {
       itemError = cause?.response?.message || (editingItemId
         ? 'แก้ไขรายการไม่สำเร็จ กรุณาตรวจสอบสิทธิ์ PocketBase'
@@ -646,17 +659,20 @@
         </div>
         <label>ชื่อของ<input bind:value={form.name} required placeholder="เช่น เต็นท์สนาม" /></label>
         <label>หมวดหมู่<input bind:value={form.category} required /></label>
-        <label>รายละเอียด<textarea bind:value={form.description} rows="3" required></textarea></label>
-        <label>URL รูปภาพ<input bind:value={form.image} required placeholder="https://..." /></label>
+        <label>รายละเอียด<textarea bind:value={form.description} rows="3"></textarea></label>
+        <label>URL รูปภาพ<input bind:value={form.image} placeholder="https://..." /></label>
         <div class="grid grid-cols-2 gap-3">
           <label>จำนวนทั้งหมด<input type="number" min="1" step="1" bind:value={form.total} required /></label>
           <label>พร้อมให้ยืม<input type="number" min="0" step="1" bind:value={form.available} required /></label>
         </div>
-        <label>สถานที่จัดเก็บ<input bind:value={form.location} required placeholder="เช่น ห้อง 301" /></label>
+        <label>สถานที่จัดเก็บ<input bind:value={form.location} placeholder="เช่น ห้อง 301" /></label>
         {#if itemError}
           <p class="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{itemError}</p>
         {/if}
-        <Button disabled={saving}>
+        {#if itemSuccess}
+          <p class="rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-700">{itemSuccess}</p>
+        {/if}
+        <Button type="submit" disabled={saving}>
           {#if saving}
             กำลังบันทึก...
           {:else if editingItemId}
