@@ -53,7 +53,7 @@ export async function POST({ request, locals, getClientAddress }) {
       .create({
         announcement: id,
         revision: String(p.revision || "default").slice(0, 100),
-        site: "borrowly",
+        site: "3kzy4o7ckfcrsm9", // Borrow Item relation in services
         ...(user ? { user } : {}),
         viewer_hash,
       });

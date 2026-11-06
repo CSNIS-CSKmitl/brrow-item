@@ -32,7 +32,7 @@ async function writeAccessAudit(event, status) {
       event.request.headers.get("x-forwarded-for") ||
       "";
     await pb.collection("service_access_logs").create({
-      service: "borrowly",
+      service: "3kzy4o7ckfcrsm9", // Borrow Item relation in services
       user: user || undefined,
       source_ip: sourceIp,
       method: event.request.method,

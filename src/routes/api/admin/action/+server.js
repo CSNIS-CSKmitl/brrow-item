@@ -24,7 +24,7 @@ export async function POST({ request, locals }) {
     }
 
     await pb.collection("admin_actions").create({
-      service: "loan",
+      service: "3kzy4o7ckfcrsm9", // Borrow Item relation in services
       action,
       actor: locals.user.id,
       target_collection: "loan_requests",
