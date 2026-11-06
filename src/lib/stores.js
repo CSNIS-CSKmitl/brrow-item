@@ -1,5 +1,5 @@
-import { writable, derived, get } from 'svelte/store';
-import { items as mockItems } from './mock-data.js';
+import { writable, derived, get } from "svelte/store";
+import { items as mockItems } from "./mock-data.js";
 import {
   pb,
   getUserType,
@@ -10,11 +10,10 @@ import {
   createLoanRequest,
   establishServerSession,
   logout as pbLogout,
-} from './pocketbase.js';
+} from "./pocketbase.js";
 
 const hasPb = Boolean(
-  import.meta.env.VITE_POCKETBASE_URL ||
-    import.meta.env.VITE_POCKETBASE_TARGET
+  import.meta.env.VITE_POCKETBASE_URL || import.meta.env.VITE_POCKETBASE_TARGET,
 );
 
 // Auth state
@@ -23,7 +22,10 @@ export const user = writable(pb.authStore.record);
 export const authReady = writable(false);
 export const userType = derived(user, ($user) => getUserType($user));
 export const canAdmin = derived(user, ($user) => isAdmin($user));
-export const isTeacherOrAdmin = derived(user, ($user) => isAdmin($user) || getUserType($user) === 'teachers');
+export const isTeacherOrAdmin = derived(
+  user,
+  ($user) => isAdmin($user) || getUserType($user) === "teachers",
+);
 export const isSuperadminUser = derived(user, ($user) => isSuperadmin($user));
 
 // Shared Items & Loan Cart
@@ -35,7 +37,7 @@ export const panelOpen = writable(false);
 export const teachers = writable([]);
 
 // Global Toasts / Feedback
-export const toastMessage = writable({ type: '', text: '' });
+export const toastMessage = writable({ type: "", text: "" });
 
 let unsubscribeRealtime = null;
 let isRefreshingSession = false;
@@ -49,7 +51,7 @@ export async function loadItems() {
     if (hasPb) items.set(list);
     else if (list.length) items.set(list);
   } catch (e) {
-    console.error('Load items failed', e);
+    console.error("Load items failed", e);
   } finally {
     itemsLoaded.set(true);
     itemsLoading.set(false);
@@ -69,7 +71,7 @@ export function toggleItem(item) {
   selectedItems.update((list) =>
     list.some((selected) => selected.id === item.id)
       ? list.filter((selected) => selected.id !== item.id)
-      : [...list, item]
+      : [...list, item],
   );
 }
 
@@ -83,15 +85,18 @@ export async function submitLoan(form) {
       ...form,
       itemIds: ids,
       items: ids,
-      quantities: form.quantities || Object.fromEntries(ids.map((id) => [id, 1])),
+      quantities:
+        form.quantities || Object.fromEntries(ids.map((id) => [id, 1])),
     });
     selectedItems.set([]);
     panelOpen.set(false);
-    toastMessage.set({ type: 'success', text: 'ส่งคำขอเรียบร้อยแล้ว' });
+    toastMessage.set({ type: "success", text: "ส่งคำขอเรียบร้อยแล้ว" });
     return true;
   } catch (error) {
-    const msg = error?.response?.message || 'ส่งคำขอไม่สำเร็จ กรุณาตรวจสอบสิทธิ์ PocketBase';
-    toastMessage.set({ type: 'error', text: msg });
+    const msg =
+      error?.response?.message ||
+      "ส่งคำขอไม่สำเร็จ กรุณาตรวจสอบสิทธิ์ PocketBase";
+    toastMessage.set({ type: "error", text: msg });
     throw error;
   }
 }
@@ -99,11 +104,13 @@ export async function submitLoan(form) {
 export async function startRealtime() {
   if (unsubscribeRealtime || !pb.authStore.isValid) return;
   try {
-    unsubscribeRealtime = await pb.collection('loan_requests').subscribe('*', () => {
-      // triggers realtime notifications
-    });
+    unsubscribeRealtime = await pb
+      .collection("loan_requests")
+      .subscribe("*", () => {
+        // triggers realtime notifications
+      });
   } catch (e) {
-    console.error('Realtime connection failed', e);
+    console.error("Realtime connection failed", e);
   }
 }
 
@@ -121,7 +128,7 @@ export function handleLogout() {
   pbLogout();
   user.set(null);
   authReady.set(true);
-  window.location.href = '/login';
+  window.location.href = "/login";
 }
 
 export function loadAll({ force = false } = {}) {
@@ -132,7 +139,12 @@ export function loadAll({ force = false } = {}) {
     return Promise.resolve();
   }
   const currentRecordId = pb.authStore.record?.id || null;
-  if (!force && get(authReady) && initializedUserId && currentRecordId === initializedUserId) {
+  if (
+    !force &&
+    get(authReady) &&
+    initializedUserId &&
+    currentRecordId === initializedUserId
+  ) {
     return Promise.resolve();
   }
   if (!bootstrapPromise) {
@@ -147,8 +159,8 @@ async function refreshAndLoad() {
   if (isRefreshingSession) return;
   isRefreshingSession = true;
   try {
-    const authData = await pb.collection('users').authRefresh({
-      expand: 'user_type',
+    const authData = await pb.collection("users").authRefresh({
+      expand: "user_type",
       requestKey: null,
     });
     initializedUserId = authData?.record?.id || pb.authStore.record?.id || null;
@@ -160,7 +172,7 @@ async function refreshAndLoad() {
   } catch (error) {
     const status = Number(error?.status || 0);
     if (status === 401 || status === 403) {
-      console.error('Borrowly session expired or unauthorized', error);
+      console.error("Borrowly session expired or unauthorized", error);
       initializedUserId = null;
       pb.authStore.clear();
       user.set(null);
@@ -168,7 +180,10 @@ async function refreshAndLoad() {
       isRefreshingSession = false;
       return;
     }
-    console.warn('Transient error refreshing Borrowly session; keeping current session', error);
+    console.warn(
+      "Transient error refreshing Borrowly session; keeping current session",
+      error,
+    );
     initializedUserId = pb.authStore.record?.id || null;
   } finally {
     isRefreshingSession = false;
@@ -185,8 +200,16 @@ async function refreshAndLoad() {
 pb.authStore.onChange(() => {
   const current = pb.authStore.record;
   user.update((prev) => {
-    if (current && prev?.id === current.id && !current.expand?.user_type && prev.expand?.user_type) {
-      return { ...current, expand: { ...current.expand, user_type: prev.expand.user_type } };
+    if (
+      current &&
+      prev?.id === current.id &&
+      !current.expand?.user_type &&
+      prev.expand?.user_type
+    ) {
+      return {
+        ...current,
+        expand: { ...current.expand, user_type: prev.expand.user_type },
+      };
     }
     return current;
   });

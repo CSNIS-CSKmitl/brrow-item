@@ -1,11 +1,11 @@
 export interface BorrowItem {
-	id: string;
-	name: string;
-	category: string;
-	description: string;
-	image: string;
-	available: number;
-	total: number;
-	location: string;
-	featured?: boolean;
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  image: string;
+  available: number;
+  total: number;
+  location: string;
+  featured?: boolean;
 }

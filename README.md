@@ -95,9 +95,8 @@ npm run dev
 หมายเหตุสำหรับ PocketBase ตัวปัจจุบัน: collection `users` ใช้ relation field ชื่อ `user_type` ไปยัง collection `user_type` และหน้า `/admin` อนุญาตผู้ใช้ประเภท `admin` (id `000000000000000`) และ `superadmin` (id `000000000000009`)
 
 หน้า Login เรียก `listAuthMethods()` แล้วเลือก provider จาก `VITE_POCKETBASE_OIDC_PROVIDER` (ค่าเริ่มต้น `oidc`) ดังนั้นต้องเปิดและตั้งค่า OIDC provider ใน PocketBase ก่อน
+
 # brrow-item
-
-
 
 ## GitHub Actions deploy
 
@@ -107,4 +106,3 @@ npm run dev
 
 - [นโยบายความเป็นส่วนตัว](https://req.cskmitl.com/privacy)
 - [ข้อกำหนดการใช้งาน](https://req.cskmitl.com/terms)
-

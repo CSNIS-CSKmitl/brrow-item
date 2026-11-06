@@ -1,4 +1,4 @@
-import type { PublicAnnouncement } from './announcements';
+import type { PublicAnnouncement } from "./announcements";
 
 export class AnnouncementFeed {
   items = $state<PublicAnnouncement[]>([]);
@@ -14,7 +14,7 @@ export class AnnouncementFeed {
   constructor(
     private fallback: PublicAnnouncement | null,
     private onUnread: (unseen: boolean) => void,
-    private onRemoved: () => void
+    private onRemoved: () => void,
   ) {}
 
   private key(item: PublicAnnouncement) {
@@ -26,15 +26,20 @@ export class AnnouncementFeed {
     this.controller = new AbortController();
     const timeout = setTimeout(() => this.controller?.abort(), 10000);
     try {
-      const response = await fetch('/api/announcements', {
+      const response = await fetch("/api/announcements", {
         signal: this.controller.signal,
-        cache: 'no-store'
+        cache: "no-store",
       });
-      if (!response.ok) throw new Error('Announcements unavailable');
-      const result = (await response.json()) as { items: PublicAnnouncement[]; configured: boolean };
+      if (!response.ok) throw new Error("Announcements unavailable");
+      const result = (await response.json()) as {
+        items: PublicAnnouncement[];
+        configured: boolean;
+      };
       if (this.stopped) return;
       this.unavailable = !result.configured;
-      this.accept(result.configured ? result.items : this.fallback ? [this.fallback] : []);
+      this.accept(
+        result.configured ? result.items : this.fallback ? [this.fallback] : [],
+      );
     } catch {
       if (!this.stopped) {
         this.unavailable = true;
@@ -49,7 +54,9 @@ export class AnnouncementFeed {
 
   private accept(items: PublicAnnouncement[]) {
     const ranks = { emergency: 0, important: 1, info: 2 };
-    this.items = [...items].sort((a, b) => ranks[a.priority] - ranks[b.priority]);
+    this.items = [...items].sort(
+      (a, b) => ranks[a.priority] - ranks[b.priority],
+    );
     this.loaded = true;
     if (this.selected) {
       const current = this.items.find((item) => item.id === this.selected?.id);
@@ -61,7 +68,9 @@ export class AnnouncementFeed {
         this.selected = current;
       }
     }
-    const unseen = this.items.find((item) => !this.dismissed.has(this.key(item)));
+    const unseen = this.items.find(
+      (item) => !this.dismissed.has(this.key(item)),
+    );
     if (unseen && !this.isOpen) {
       this.selected = unseen;
       this.isOpen = true;
@@ -73,11 +82,11 @@ export class AnnouncementFeed {
   }
 
   private recordRead(item: PublicAnnouncement) {
-    if (!item?.id || item.id === 'legacy-flood') return;
-    void fetch('/api/announcements', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ announcement: item.id, revision: item.revision })
+    if (!item?.id || item.id === "legacy-flood") return;
+    void fetch("/api/announcements", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ announcement: item.id, revision: item.revision }),
     }).catch(() => {});
   }
 
@@ -91,7 +100,8 @@ export class AnnouncementFeed {
 
   nextUnread() {
     if (this.selected) {
-      if (!this.dismissed.has(this.key(this.selected))) this.recordRead(this.selected);
+      if (!this.dismissed.has(this.key(this.selected)))
+        this.recordRead(this.selected);
       this.dismissed.add(this.key(this.selected));
     }
     this.isOpen = false;
@@ -106,22 +116,24 @@ export class AnnouncementFeed {
   select(offset: number) {
     if (!this.items.length) return;
     const index = this.items.findIndex((item) => item.id === this.selected?.id);
-    this.selected = this.items[(index + offset + this.items.length) % this.items.length] || null;
+    this.selected =
+      this.items[(index + offset + this.items.length) % this.items.length] ||
+      null;
   }
 
   start() {
     this.stopped = false;
     void this.refresh();
     const refresh = () => {
-      if (document.visibilityState === 'visible') void this.refresh();
+      if (document.visibilityState === "visible") void this.refresh();
     };
     const timer = setInterval(refresh, 30000);
-    document.addEventListener('visibilitychange', refresh);
+    document.addEventListener("visibilitychange", refresh);
     return () => {
       this.stopped = true;
       this.controller?.abort();
       clearInterval(timer);
-      document.removeEventListener('visibilitychange', refresh);
+      document.removeEventListener("visibilitychange", refresh);
     };
   }
 }

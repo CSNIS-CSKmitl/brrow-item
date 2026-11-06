@@ -4,14 +4,17 @@
 const state = {
   requests: [],
   loaded: false,
-  lastUpdated: '',
+  lastUpdated: "",
 };
 
 export function getAdminDashboardState() {
   return state;
 }
 
-export function updateAdminDashboardState(requests, lastUpdated = new Date().toISOString()) {
+export function updateAdminDashboardState(
+  requests,
+  lastUpdated = new Date().toISOString(),
+) {
   state.requests = Array.isArray(requests) ? requests : [];
   state.loaded = true;
   state.lastUpdated = lastUpdated;
