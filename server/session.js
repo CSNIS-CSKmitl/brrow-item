@@ -6,12 +6,51 @@ const SESSION_CACHE_TTL_MS = 2 * 60 * 1000;
 const sessionCache = new Map();
 
 const ROLE_BY_TYPE_ID = {
-  '000000000000009': 'superadmin',
+  '000000000000009': 'super_admin',
+  '000000000000010': 'superadmin',
   '000000000000000': 'admin',
   '000000000000002': 'teachers',
+  '000000000000006': 'teachers',
   '000000000000001': 'students',
-  '000000000000004': 'staff'
+  '000000000000004': 'staff',
+  '000000000000007': 'staff',
+  '000000000000005': 'head'
 };
+
+export function userRolesFromRecord(record) {
+  if (!record?.id) return [];
+  const roles = new Set();
+  
+  if (Array.isArray(record.roles)) {
+    record.roles.forEach(r => roles.add(String(r).toLowerCase().trim()));
+  }
+
+  const expanded = record.expand?.user_type;
+  if (Array.isArray(expanded)) {
+    expanded.forEach(item => {
+      if (item?.type) roles.add(item.type.toLowerCase().trim());
+      if (item?.id && ROLE_BY_TYPE_ID[item.id]) roles.add(ROLE_BY_TYPE_ID[item.id]);
+    });
+  } else if (expanded && typeof expanded === 'object') {
+    if (expanded.type) roles.add(expanded.type.toLowerCase().trim());
+    if (expanded.id && ROLE_BY_TYPE_ID[expanded.id]) roles.add(ROLE_BY_TYPE_ID[expanded.id]);
+  }
+
+  const ut = record.user_type;
+  if (Array.isArray(ut)) {
+    ut.forEach(item => {
+      if (typeof item === 'string') {
+        roles.add(item.toLowerCase().trim());
+        if (ROLE_BY_TYPE_ID[item]) roles.add(ROLE_BY_TYPE_ID[item]);
+      }
+    });
+  } else if (typeof ut === 'string') {
+    roles.add(ut.toLowerCase().trim());
+    if (ROLE_BY_TYPE_ID[ut]) roles.add(ROLE_BY_TYPE_ID[ut]);
+  }
+
+  return Array.from(roles);
+}
 
 function parseCookies(header = '') {
   return Object.fromEntries(header.split(';').map((part) => {
@@ -51,9 +90,15 @@ export function jwtUserId(token = '') {
 
 export function userFromRecord(record) {
   if (!record?.id) return null;
-  const type = record.expand?.user_type?.type || record.user_type || '';
-  const role = ROLE_BY_TYPE_ID[type] || type;
-  return { id: record.id, email: record.email || '', role };
+  const roles = userRolesFromRecord(record);
+  let role = 'user';
+  if (roles.includes('head')) role = 'head';
+  else if (roles.includes('super_admin') || roles.includes('superadmin')) role = 'super_admin';
+  else if (roles.includes('admin')) role = 'admin';
+  else if (roles.includes('teachers') || roles.includes('teacher')) role = 'teachers';
+  else if (roles.includes('staff') || roles.includes('stuff')) role = 'staff';
+  else if (roles.includes('students') || roles.includes('student')) role = 'students';
+  return { id: record.id, email: record.email || '', role, roles };
 }
 
 export function cacheSessionUser(token, recordOrUser) {

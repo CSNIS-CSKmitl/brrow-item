@@ -31,7 +31,8 @@
   const activeClass = (target, current) => (current === target ? 'text-ink font-bold' : 'text-[#68726b] hover:text-ink');
 
   function roleTitle(type) {
-    if (type === 'superadmin') return 'ผู้ดูแลระบบสูงสุด (Superadmin)';
+    if (type === 'head') return 'หัวหน้าภาค (Head)';
+    if (type === 'super_admin' || type === 'superadmin') return 'ผู้ดูแลระบบสูงสุด (Super Admin)';
     if (type === 'admin') return 'ผู้ดูแลระบบ (Admin)';
     if (type === 'teachers') return 'อาจารย์ (Teacher)';
     if (type === 'students') return 'นักศึกษา (Student)';
@@ -40,7 +41,7 @@
   }
 
   function roleBadgeColor(type) {
-    if (type === 'superadmin') return 'bg-amber-100 text-amber-800 border-amber-200';
+    if (type === 'super_admin' || type === 'superadmin') return 'bg-amber-100 text-amber-800 border-amber-200';
     if (type === 'admin') return 'bg-emerald-100 text-emerald-800 border-emerald-200';
     if (type === 'teachers') return 'bg-blue-100 text-blue-800 border-blue-200';
     if (type === 'students') return 'bg-purple-100 text-purple-800 border-purple-200';

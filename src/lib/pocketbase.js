@@ -82,24 +82,73 @@ export function logout() {
   void fetch('/api/auth/logout', { redirect: 'manual' }).catch(() => {});
 }
 
+export function getUserRoles(record = pb.authStore.record) {
+  if (!record) return [];
+  const roles = new Set();
+  if (Array.isArray(record.roles)) {
+    record.roles.forEach(r => roles.add(String(r).toLowerCase().trim()));
+  }
+  const expanded = record.expand?.user_type;
+  if (Array.isArray(expanded)) {
+    expanded.forEach(item => {
+      if (item?.type) roles.add(item.type.toLowerCase().trim());
+      if (item?.id) addIdRole(item.id, roles);
+    });
+  } else if (expanded && typeof expanded === 'object') {
+    if (expanded.type) roles.add(expanded.type.toLowerCase().trim());
+    if (expanded.id) addIdRole(expanded.id, roles);
+  }
+  const ut = record.user_type;
+  if (Array.isArray(ut)) {
+    ut.forEach(item => {
+      if (typeof item === 'string') {
+        roles.add(item.toLowerCase().trim());
+        addIdRole(item, roles);
+      }
+    });
+  } else if (typeof ut === 'string') {
+    roles.add(ut.toLowerCase().trim());
+    addIdRole(ut, roles);
+  }
+  return Array.from(roles);
+}
+
+function addIdRole(id, set) {
+  if (id === '000000000000000') set.add('admin');
+  if (id === '000000000000001') set.add('students');
+  if (id === '000000000000002' || id === '000000000000006') { set.add('teachers'); set.add('teacher'); }
+  if (id === '000000000000003' || id === '000000000000008') { set.add('guests'); set.add('guest'); }
+  if (id === '000000000000009' || id === '000000000000010') { set.add('superadmin'); set.add('super_admin'); }
+  if (id === '000000000000004' || id === '000000000000007') { set.add('staff'); set.add('stuff'); }
+  if (id === '000000000000005') set.add('head');
+}
+
 export function isSuperadmin(record = pb.authStore.record) {
-  return getUserType(record) === 'superadmin';
+  if (!record) return false;
+  if (record.email === 'log@cskmitl.com') return true;
+  const roles = getUserRoles(record);
+  return roles.includes('superadmin') || roles.includes('super_admin') || roles.includes('head');
 }
 
 export function isAdmin(record = pb.authStore.record) {
-  // Both admin (000000000000000 / 'admin') and superadmin (000000000000009 / 'superadmin') can manage loan requests and inventory
-  const type = getUserType(record);
-  return type === 'superadmin' || type === 'admin';
+  // admin printer,brrow,booking requires super_admin or head to access admin panel
+  if (!record) return false;
+  if (record.email === 'log@cskmitl.com') return true;
+  const roles = getUserRoles(record);
+  return roles.includes('superadmin') || roles.includes('super_admin') || roles.includes('head');
 }
 
 export function getUserType(record = pb.authStore.record) {
-  const type = record?.expand?.user_type?.type || record?.user_type || '';
-  if (type === '000000000000009') return 'superadmin';
-  if (type === '000000000000000') return 'admin';
-  if (type === '000000000000002') return 'teachers';
-  if (type === '000000000000001') return 'students';
-  if (type === '000000000000004') return 'staff';
-  return type;
+  if (!record) return '';
+  const roles = getUserRoles(record);
+  if (roles.includes('head')) return 'head';
+  if (roles.includes('super_admin') || roles.includes('superadmin')) return 'super_admin';
+  if (roles.includes('admin')) return 'admin';
+  if (roles.includes('teachers') || roles.includes('teacher')) return 'teachers';
+  if (roles.includes('staff') || roles.includes('stuff')) return 'staff';
+  if (roles.includes('students') || roles.includes('student')) return 'students';
+  if (roles.includes('guests') || roles.includes('guest')) return 'guests';
+  return 'user';
 }
 
 export async function getItems() {
