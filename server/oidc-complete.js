@@ -77,7 +77,8 @@ export async function completeOidc(req, res, env = process.env) {
       return respond(res, 403, { ok: false, error: 'OIDC identity does not match the PocketBase account' });
     }
 
-    if (!record.user_type) {
+    const hasNoRole = !record.user_type || (Array.isArray(record.user_type) && record.user_type.length === 0);
+    if (hasNoRole) {
       if (!env.PB_ADMIN_EMAIL || !env.PB_ADMIN_PASSWORD) {
         return respond(res, 503, { ok: false, error: 'OIDC role assignment is not configured on the server' });
       }

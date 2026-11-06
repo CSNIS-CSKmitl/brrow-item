@@ -200,7 +200,7 @@ export async function createLoanRequest({ itemIds, items, quantities, borrowerNa
 
 export async function getTeachers() {
   const users = await pb.collection('users').getFullList({ sort: 'name', expand: 'user_type', requestKey: null });
-  return users.filter((user) => user.expand?.user_type?.type === 'teachers');
+  return users.filter((user) => getUserRoles(user).includes('teachers') || getUserRoles(user).includes('teacher'));
 }
 
 export async function getLoanRequests(status = '', teacherId = null) {
