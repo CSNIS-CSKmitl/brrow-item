@@ -1,5 +1,5 @@
 <script>
-  import { CheckCircle2, Search, SlidersHorizontal } from "lucide-svelte";
+  import { CheckCircle2, Search, SlidersHorizontal } from '@lucide/svelte';
   import ItemCard from "../lib/components/ItemCard.svelte";
   import Button from "../lib/components/Button.svelte";
   import { categories } from "../lib/mock-data.js";

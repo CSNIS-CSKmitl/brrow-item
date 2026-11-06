@@ -11,7 +11,7 @@
     User,
     UserRound,
     X,
-  } from 'lucide-svelte';
+  } from '@lucide/svelte';
   import { user, userType } from '../stores.js';
 
   export let loanCount = 0;

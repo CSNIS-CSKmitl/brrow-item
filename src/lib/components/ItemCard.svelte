@@ -1,5 +1,5 @@
 <script>
-  import { MapPin, Plus } from 'lucide-svelte';
+  import { MapPin, Plus } from '@lucide/svelte';
   import Button from './Button.svelte';
   import { canAdmin } from '../stores.js';
   export let item;

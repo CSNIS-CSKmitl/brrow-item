@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte';
-  import { Megaphone, ExternalLink, X, ChevronLeft, ChevronRight } from 'lucide-svelte';
+  import { Megaphone, ExternalLink, X, ChevronLeft, ChevronRight } from '@lucide/svelte';
   import { AnnouncementFeed } from '../announcement-feed.svelte';
   import { announcementPriorityLabels, announcementLink } from '../announcements';
   import { floodAnnouncement as legacy } from '../flood-announcement';

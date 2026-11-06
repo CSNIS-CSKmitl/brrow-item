@@ -1,5 +1,5 @@
 <script>
-  import { RefreshCw, AlertTriangle, Radio, Trophy, CheckCircle2, Package } from 'lucide-svelte';
+  import { RefreshCw, AlertTriangle, Radio, Trophy, CheckCircle2, Package } from '@lucide/svelte';
   import { TIME_RANGES } from '../admin-stats.js';
   import { formatDateTime } from '../csv.js';
 

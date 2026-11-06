@@ -1,6 +1,6 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
-  import { Check, Download, Pencil, X } from 'lucide-svelte';
+  import { Check, Download, Pencil, X } from '@lucide/svelte';
   import { items as mockItems } from '../../lib/mock-data.js';
   import Button from '../../lib/components/Button.svelte';
   import { items, teachers, userType } from '../../lib/stores.js';

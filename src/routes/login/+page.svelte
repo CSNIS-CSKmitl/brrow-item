@@ -1,7 +1,7 @@
 <script>
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
-  import { ArrowRight, LockKeyhole, Package } from 'lucide-svelte';
+  import { ArrowRight, LockKeyhole, Package } from '@lucide/svelte';
   import Button from '../../lib/components/Button.svelte';
 
   import { login, loginWithOIDC } from '../../lib/pocketbase.js';
