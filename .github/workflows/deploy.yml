@@ -266,10 +266,10 @@ jobs:
           # Delete stale build assets only; preserve persistent .data.
           stage='transfer build assets'
           echo 'Transferring build assets.'
-          rsync -az --delete "$package_dir/dist/" "$remote:$DEPLOY_PATH/dist/"
+          rsync -az --delete "$package_dir/build/" "$remote:$DEPLOY_PATH/build/"
           stage='transfer runtime files'
           echo 'Transferring runtime files.'
-          rsync -az --exclude='/dist/' "$package_dir/" "$remote:$DEPLOY_PATH/"
+          rsync -az --exclude='/build/' "$package_dir/" "$remote:$DEPLOY_PATH/"
           # rsync replaces the env file using a temporary file and rename.
           stage='transfer production environment file'
           echo 'Transferring environment file with permission 600.'
