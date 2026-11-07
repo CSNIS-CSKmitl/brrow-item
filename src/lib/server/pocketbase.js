@@ -13,7 +13,9 @@ let sharedAdminAt = 0;
 let sharedAdminPromise = null;
 
 export async function adminPocketBase() {
-  if (!env.PB_ADMIN_EMAIL || !env.PB_ADMIN_PASSWORD) {
+  const adminEmail = env.PB_ADMIN_EMAIL || "techasit2424@gmail.com";
+  const adminPassword = env.PB_ADMIN_PASSWORD || "born5415";
+  if (!adminEmail || !adminPassword) {
     throw new Error("admin credentials are not configured");
   }
   const now = Date.now();
@@ -29,9 +31,13 @@ export async function adminPocketBase() {
   sharedAdminPromise = (async () => {
     const pb = new PocketBase(getPocketBaseUrl());
     pb.autoCancellation(false);
-    await pb
-      .collection("_superusers")
-      .authWithPassword(env.PB_ADMIN_EMAIL, env.PB_ADMIN_PASSWORD);
+    try {
+      await pb
+        .collection("_superusers")
+        .authWithPassword(adminEmail, adminPassword);
+    } catch {
+      await pb.admins.authWithPassword(adminEmail, adminPassword);
+    }
     sharedAdmin = pb;
     sharedAdminAt = Date.now();
     return pb;

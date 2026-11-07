@@ -220,7 +220,7 @@
                   <select bind:value={editForm.teacher} required>
                     <option value="">เลือก อจ.</option>
                     {#each $teachers as teacher}
-                      <option value={teacher.id}>{teacher.name ? `${teacher.name} (${teacher.email || "-" })` : (teacher.email || teacher.id)}</option>
+                      <option value={teacher.id}>{teacher.name ? `${teacher.name}${teacher.email ? ` (${teacher.email})` : ''}` : (teacher.email || teacher.id)}</option>
                     {/each}
                   </select>
                 </label>

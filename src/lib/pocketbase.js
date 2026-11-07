@@ -253,6 +253,18 @@ export async function createLoanRequest({
 }
 
 export async function getTeachers() {
+  try {
+    const res = await fetch("/api/teachers");
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) {
+        return data;
+      }
+    }
+  } catch (err) {
+    console.warn("[getTeachers] /api/teachers failed, falling back to PocketBase client:", err);
+  }
+
   const users = await pb
     .collection("users")
     .getFullList({ sort: "name", expand: "user_type", requestKey: null });
