@@ -23,9 +23,11 @@
   }
 </script>
 
+<svelte:window on:keydown={(e) => { if (open && e.key === 'Escape') onClose(); }} />
+
 {#if open}
   <button type="button" class="fixed inset-0 z-30 cursor-default bg-ink/25 backdrop-blur-[2px]" aria-label="ปิดหน้าส่งคำขอยืม" on:click={onClose}></button>
-  <aside class="fixed right-0 top-0 z-40 flex h-full w-full max-w-md flex-col bg-cream shadow-2xl">
+  <div role="dialog" aria-modal="true" aria-label="ยืนยันการยืมของ" class="fixed right-0 top-0 z-40 flex h-full w-full max-w-md flex-col bg-cream shadow-2xl">
     <div class="flex items-center justify-between border-b border-[#e7e5df] px-6 py-5">
       <div>
         <p class="text-xs font-semibold uppercase tracking-[.16em] text-sage">ยืนยันการยืม</p>
@@ -102,5 +104,5 @@
         {isTeacher ? 'ส่งคำขอถึงผู้ดูแล' : 'ส่งคำขอยืม (ให้อาจารย์รับทราบ)'} <ArrowRight size={17}/>
       </Button>
     </div>
-  </aside>
+  </div>
 {/if}

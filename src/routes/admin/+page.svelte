@@ -365,6 +365,8 @@
   });
 </script>
 
+<svelte:window on:keydown={(e) => { if (e.key === 'Escape') { cancelApprove(); cancelReject(); } }} />
+
 <main class="mx-auto max-w-7xl px-5 py-12 lg:px-8">
   <div class="flex flex-col justify-between gap-4 md:flex-row md:items-center mb-8">
     <div>
