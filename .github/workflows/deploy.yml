@@ -43,7 +43,7 @@ jobs:
       - name: Check application
         run: |
           node --check server.js
-          node --check server/oidc-complete.js
+          npm run check
 
       - name: Clean generated files
         if: always()
@@ -92,10 +92,8 @@ jobs:
           echo 'Packaging application runtime.'
           package_dir="$package_temp/package"
           mkdir -p "$package_dir"
-          cp package.json ecosystem.config.cjs package-lock.json "$package_dir/"
-          cp -R dist "$package_dir/"
-          cp -R server.js "$package_dir/"
-          cp -R server "$package_dir/"
+          cp package.json ecosystem.config.cjs package-lock.json server.js "$package_dir/"
+          cp -R build "$package_dir/"
           cp -R scripts "$package_dir/"
 
           tar -czf "$GITHUB_WORKSPACE/runtime.tar.gz" -C "$package_dir" .
