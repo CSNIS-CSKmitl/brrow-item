@@ -78,7 +78,14 @@
 
   function teacherName(request) {
     const teacher = request.expand?.teacher;
-    return teacher?.name || teacher?.email || $teachers.find((entry) => entry.id === request.teacher)?.name || 'ไม่ระบุอาจารย์';
+    if (teacher?.name && teacher?.email) return `${teacher.name} (${teacher.email})`;
+    if (teacher?.name) return teacher.name;
+    if (teacher?.email) return teacher.email;
+    const found = $teachers.find((entry) => entry.id === request.teacher);
+    if (found?.name && found?.email) return `${found.name} (${found.email})`;
+    if (found?.name) return found.name;
+    if (found?.email) return found.email;
+    return 'ไม่ระบุอาจารย์';
   }
 
   function statusLabel(request) {
@@ -213,7 +220,7 @@
                   <select bind:value={editForm.teacher} required>
                     <option value="">เลือก อจ.</option>
                     {#each $teachers as teacher}
-                      <option value={teacher.id}>{teacher.name || teacher.email}</option>
+                      <option value={teacher.id}>{teacher.name ? `${teacher.name} (${teacher.email || "-" })` : (teacher.email || teacher.id)}</option>
                     {/each}
                   </select>
                 </label>

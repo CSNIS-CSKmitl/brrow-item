@@ -6,6 +6,9 @@
     Trophy,
     CheckCircle2,
     Package,
+    ClipboardList,
+    Clock,
+    PackageCheck,
   } from "@lucide/svelte";
   import { TIME_RANGES } from "../admin-stats.js";
   import { formatDateTime } from "../csv.js";
@@ -138,59 +141,86 @@
       >
     </div>
   {:else}
-    <div class="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="grid gap-4 p-5 sm:p-6 sm:grid-cols-2 xl:grid-cols-4">
       <button
         type="button"
-        class="rounded-2xl border bg-white p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md {activeFilter ===
+        class="relative overflow-hidden rounded-2xl border bg-white p-5 sm:p-6 text-left transition hover:-translate-y-0.5 hover:shadow-md {activeFilter ===
         'all'
-          ? 'border-sage ring-2 ring-sage/15'
+          ? 'border-sage ring-2 ring-sage/20 bg-emerald-50/15'
           : 'border-[#dce4dc]'}"
         on:click={() => chooseFilter("all")}
-        ><p class="text-xs font-semibold text-[#737d75]">คำขอทั้งหมด</p>
-        <p class="mt-2 text-3xl font-bold text-ink">{totalRequests}</p>
-        <p class="mt-1 text-xs text-[#737d75]">
-          จากผู้ยืม {borrowerCount} คน
-        </p></button
       >
+        <div class="flex items-center justify-between">
+          <p class="text-xs font-bold uppercase tracking-wider text-[#637067]">คำขอทั้งหมด</p>
+          <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-[#f0f4ef] text-sage">
+            <ClipboardList size={18} />
+          </div>
+        </div>
+        <p class="mt-3 text-4xl font-extrabold text-ink tracking-tight">{totalRequests}</p>
+        <p class="mt-2 text-xs font-medium text-[#737d75]">
+          จากผู้ยืมทั้งหมด {borrowerCount} คน
+        </p>
+      </button>
+
       <button
         type="button"
-        class="rounded-2xl border bg-white p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md {activeFilter ===
+        class="relative overflow-hidden rounded-2xl border bg-white p-5 sm:p-6 text-left transition hover:-translate-y-0.5 hover:shadow-md {activeFilter ===
           'pending_all' || activeFilter === 'pending'
-          ? 'border-amber-500 ring-2 ring-amber-500/15'
+          ? 'border-amber-500 ring-2 ring-amber-500/20 bg-amber-50/20'
           : 'border-[#dce4dc]'}"
         on:click={() => chooseFilter("pending_all")}
-        ><p class="text-xs font-semibold text-amber-700">รอการอนุมัติ</p>
-        <p class="mt-2 text-3xl font-bold text-amber-800">{pendingCount}</p>
-        <p class="mt-1 text-xs text-[#737d75]">
-          รายการที่ต้องดำเนินการ
-        </p></button
       >
+        <div class="flex items-center justify-between">
+          <p class="text-xs font-bold uppercase tracking-wider text-amber-700">รอการอนุมัติ</p>
+          <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+            <Clock size={18} />
+          </div>
+        </div>
+        <p class="mt-3 text-4xl font-extrabold text-amber-800 tracking-tight">{pendingCount}</p>
+        <p class="mt-2 text-xs font-medium text-[#737d75]">
+          รายการที่ต้องดำเนินการตรวจสอบ
+        </p>
+      </button>
+
       <button
         type="button"
-        class="rounded-2xl border bg-white p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md {activeFilter ===
+        class="relative overflow-hidden rounded-2xl border bg-white p-5 sm:p-6 text-left transition hover:-translate-y-0.5 hover:shadow-md {activeFilter ===
         'approved'
-          ? 'border-emerald-500 ring-2 ring-emerald-500/15'
+          ? 'border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50/20'
           : 'border-[#dce4dc]'}"
         on:click={() => chooseFilter("approved")}
-        ><p class="text-xs font-semibold text-emerald-700">กำลังยืม</p>
-        <p class="mt-2 text-3xl font-bold text-emerald-800">
-          {currentlyBorrowed}
-        </p>
-        <p class="mt-1 text-xs text-[#737d75]">
-          รวม {borrowedUnits} ชิ้น
-        </p></button
       >
+        <div class="flex items-center justify-between">
+          <p class="text-xs font-bold uppercase tracking-wider text-emerald-700">กำลังยืม</p>
+          <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+            <PackageCheck size={18} />
+          </div>
+        </div>
+        <p class="mt-3 text-4xl font-extrabold text-emerald-800 tracking-tight">{currentlyBorrowed}</p>
+        <p class="mt-2 text-xs font-medium text-[#737d75]">
+          อุปกรณ์ถูกยืมรวม {borrowedUnits} ชิ้น
+        </p>
+      </button>
+
       <button
         type="button"
-        class="rounded-2xl border bg-white p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md {activeFilter ===
+        class="relative overflow-hidden rounded-2xl border bg-white p-5 sm:p-6 text-left transition hover:-translate-y-0.5 hover:shadow-md {activeFilter ===
         'overdue'
-          ? 'border-rose-500 ring-2 ring-rose-500/15'
+          ? 'border-rose-500 ring-2 ring-rose-500/20 bg-rose-50/20'
           : 'border-[#dce4dc]'}"
         on:click={() => chooseFilter("overdue")}
-        ><p class="text-xs font-semibold text-rose-700">เกินกำหนดคืน</p>
-        <p class="mt-2 text-3xl font-bold text-rose-800">{overdueRequests}</p>
-        <p class="mt-1 text-xs text-[#737d75]">รายการที่ต้องติดตาม</p></button
       >
+        <div class="flex items-center justify-between">
+          <p class="text-xs font-bold uppercase tracking-wider text-rose-700">เกินกำหนดคืน</p>
+          <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-50 text-rose-600">
+            <AlertTriangle size={18} />
+          </div>
+        </div>
+        <p class="mt-3 text-4xl font-extrabold text-rose-800 tracking-tight">{overdueRequests}</p>
+        <p class="mt-2 text-xs font-medium text-[#737d75]">
+          รายการที่ต้องติดตามส่งคืน
+        </p>
+      </button>
     </div>
 
     <div

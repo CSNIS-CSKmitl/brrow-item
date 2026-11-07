@@ -146,9 +146,11 @@
 
   function teacherName(request) {
     const t = request.expand?.teacher;
+    if (t?.name && t?.email) return `${t.name} (${t.email})`;
     if (t?.name) return t.name;
     if (t?.email) return t.email;
     const found = $teachers.find((entry) => entry.id === request.teacher);
+    if (found?.name && found?.email) return `${found.name} (${found.email})`;
     if (found?.name) return found.name;
     if (found?.email) return found.email;
     return request.teacher || 'ไม่ระบุอาจารย์';
@@ -387,121 +389,134 @@
     </button>
   </div>
 
-  <AdminStats
-    stats={activeStats}
-    {selectedRange}
-    activeFilter={requestFilter}
-    loading={statsLoading}
-    error={statsError}
-    {lastUpdated}
-    {isRealtime}
-    onRangeChange={handleRangeChange}
-    onDrilldown={handleDrilldown}
-    onRefresh={() => refreshDashboardData(selectedRange)}
-  />
-
   {#if returnError}
     <div class="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-semibold text-rose-800">
       {returnError}
     </div>
   {/if}
 
-  <!-- Main Navigation Tabs -->
-  <div class="mb-6 flex gap-3 border-b border-[#e4e5de] pb-3">
-    <button
-      type="button"
-      class="flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold transition {activeMainTab === 'requests' ? 'bg-sage text-white shadow-sm' : 'bg-white text-[#68726b] hover:bg-[#f3f6f3]'}"
-      on:click={() => (activeMainTab = 'requests')}
-    >
-      <Clock3 size={16} />
-      <span>คำขอยืมและอนุมัติ</span>
-      {#if pendingRequests.length > 0}
-        <span class="rounded-full bg-white/25 px-2 py-0.5 text-xs text-white">
-          {pendingRequests.length}
-        </span>
-      {/if}
-    </button>
-
-    {#if isAdmin($user) || getUserType($user) === 'superadmin'}
+  <!-- Main Navigation Tabs (Top Operational Area) -->
+  <div class="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-[#e4e5de] pb-4">
+    <div class="flex gap-2 sm:gap-3">
       <button
         type="button"
-        class="flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold transition {activeMainTab === 'items' ? 'bg-sage text-white shadow-sm' : 'bg-white text-[#68726b] hover:bg-[#f3f6f3]'}"
-        on:click={() => (activeMainTab = 'items')}
+        class="flex items-center gap-2.5 rounded-xl px-5 py-2.5 text-sm font-bold transition {activeMainTab === 'requests' ? 'bg-sage text-white shadow-sm ring-2 ring-sage/20' : 'bg-white text-[#68726b] border border-[#e4e5de] hover:bg-[#f3f6f3]'}"
+        on:click={() => (activeMainTab = 'requests')}
       >
-        <Package size={16} />
-        <span>จัดการของยืม ({$items.length})</span>
+        <Clock3 size={17} />
+        <span>คำขอยืมและอนุมัติ</span>
+        {#if pendingRequests.length > 0}
+          <span class="rounded-full bg-white/30 px-2 py-0.5 text-xs font-bold text-white">
+            {pendingRequests.length}
+          </span>
+        {/if}
       </button>
-    {/if}
+
+      {#if isAdmin($user) || getUserType($user) === 'superadmin'}
+        <button
+          type="button"
+          class="flex items-center gap-2.5 rounded-xl px-5 py-2.5 text-sm font-bold transition {activeMainTab === 'items' ? 'bg-sage text-white shadow-sm ring-2 ring-sage/20' : 'bg-white text-[#68726b] border border-[#e4e5de] hover:bg-[#f3f6f3]'}"
+          on:click={() => (activeMainTab = 'items')}
+        >
+          <Package size={17} />
+          <span>จัดการของยืม ({$items.length})</span>
+        </button>
+      {/if}
+    </div>
   </div>
 
   <!-- TAB 1: LOAN REQUESTS & APPROVALS -->
   {#if activeMainTab === 'requests'}
-    <!-- Request Filter Tabs -->
-    <div class="mb-6 flex flex-wrap gap-2">
+    <!-- Request Filter Tabs (Redesigned: Spacious, high contrast, easy to navigate) -->
+    <div class="mb-6 flex flex-wrap gap-2 sm:gap-2.5">
       <button
         type="button"
-        class="rounded-lg px-3.5 py-1.5 text-xs font-bold transition {requestFilter === 'pending' ? 'bg-blue-600 text-white shadow-xs' : 'bg-[#f0f4ef] text-[#5e6960] hover:bg-[#e4ede3]'}"
+        class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs sm:text-sm font-bold transition shadow-xs {requestFilter === 'pending' ? 'bg-blue-600 text-white ring-2 ring-blue-600/25' : 'bg-white border border-[#dce3dc] text-[#556157] hover:bg-[#f4f7f4]'}"
         on:click={() => (requestFilter = 'pending')}
       >
-        รอผู้ดูแลอนุมัติ ({pendingRequests.length})
+        <span>รอผู้ดูแลอนุมัติ</span>
+        <span class="rounded-full px-2 py-0.5 text-xs font-bold {requestFilter === 'pending' ? 'bg-white/25 text-white' : 'bg-blue-50 text-blue-700'}">
+          {pendingRequests.length}
+        </span>
       </button>
 
       <button
         type="button"
-        class="rounded-lg px-3.5 py-1.5 text-xs font-bold transition {requestFilter === 'pending_teacher' ? 'bg-amber-600 text-white shadow-xs' : 'bg-[#f0f4ef] text-[#5e6960] hover:bg-[#e4ede3]'}"
+        class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs sm:text-sm font-bold transition shadow-xs {requestFilter === 'pending_teacher' ? 'bg-amber-600 text-white ring-2 ring-amber-600/25' : 'bg-white border border-[#dce3dc] text-[#556157] hover:bg-[#f4f7f4]'}"
         on:click={() => (requestFilter = 'pending_teacher')}
       >
-        รอ อจ. รับทราบ ({pendingTeacherRequests.length})
+        <span>รอ อจ. รับทราบ</span>
+        <span class="rounded-full px-2 py-0.5 text-xs font-bold {requestFilter === 'pending_teacher' ? 'bg-white/25 text-white' : 'bg-amber-50 text-amber-700'}">
+          {pendingTeacherRequests.length}
+        </span>
       </button>
 
       {#if requestFilter === 'pending_all'}
         <button
           type="button"
-          class="rounded-lg px-3.5 py-1.5 text-xs font-bold transition bg-amber-700 text-white shadow-xs"
+          class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs sm:text-sm font-bold transition shadow-xs bg-amber-700 text-white ring-2 ring-amber-700/25"
           on:click={() => (requestFilter = 'pending_all')}
         >
-          รออนุมัติทั้งหมด ({pendingCount})
+          <span>รออนุมัติทั้งหมด</span>
+          <span class="rounded-full px-2 py-0.5 text-xs font-bold bg-white/25 text-white">
+            {pendingCount}
+          </span>
         </button>
       {/if}
 
       <button
         type="button"
-        class="rounded-lg px-3.5 py-1.5 text-xs font-bold transition {requestFilter === 'approved' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-[#f0f4ef] text-[#5e6960] hover:bg-[#e4ede3]'}"
+        class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs sm:text-sm font-bold transition shadow-xs {requestFilter === 'approved' ? 'bg-emerald-600 text-white ring-2 ring-emerald-600/25' : 'bg-white border border-[#dce3dc] text-[#556157] hover:bg-[#f4f7f4]'}"
         on:click={() => (requestFilter = 'approved')}
       >
-        กำลังถูกยืม ({approvedRequests.length})
+        <span>กำลังถูกยืม</span>
+        <span class="rounded-full px-2 py-0.5 text-xs font-bold {requestFilter === 'approved' ? 'bg-white/25 text-white' : 'bg-emerald-50 text-emerald-700'}">
+          {approvedRequests.length}
+        </span>
       </button>
 
       <button
         type="button"
-        class="rounded-lg px-3.5 py-1.5 text-xs font-bold transition {requestFilter === 'overdue' ? 'bg-rose-700 text-white shadow-xs' : 'bg-[#f0f4ef] text-[#5e6960] hover:bg-[#e4ede3]'}"
+        class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs sm:text-sm font-bold transition shadow-xs {requestFilter === 'overdue' ? 'bg-rose-700 text-white ring-2 ring-rose-700/25' : 'bg-white border border-[#dce3dc] text-[#556157] hover:bg-[#f4f7f4]'}"
         on:click={() => (requestFilter = 'overdue')}
       >
-        เกินกำหนดคืน ({overdueRequestsList.length})
+        <span>เกินกำหนดคืน</span>
+        <span class="rounded-full px-2 py-0.5 text-xs font-bold {requestFilter === 'overdue' ? 'bg-white/25 text-white' : 'bg-rose-50 text-rose-700'}">
+          {overdueRequestsList.length}
+        </span>
       </button>
 
       <button
         type="button"
-        class="rounded-lg px-3.5 py-1.5 text-xs font-bold transition {requestFilter === 'returned' ? 'bg-teal-600 text-white shadow-xs' : 'bg-[#f0f4ef] text-[#5e6960] hover:bg-[#e4ede3]'}"
+        class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs sm:text-sm font-bold transition shadow-xs {requestFilter === 'returned' ? 'bg-teal-600 text-white ring-2 ring-teal-600/25' : 'bg-white border border-[#dce3dc] text-[#556157] hover:bg-[#f4f7f4]'}"
         on:click={() => (requestFilter = 'returned')}
       >
-        คืนแล้ว ({returnedRequests.length})
+        <span>คืนแล้ว</span>
+        <span class="rounded-full px-2 py-0.5 text-xs font-bold {requestFilter === 'returned' ? 'bg-white/25 text-white' : 'bg-teal-50 text-teal-700'}">
+          {returnedRequests.length}
+        </span>
       </button>
 
       <button
         type="button"
-        class="rounded-lg px-3.5 py-1.5 text-xs font-bold transition {requestFilter === 'rejected' ? 'bg-rose-600 text-white shadow-xs' : 'bg-[#f0f4ef] text-[#5e6960] hover:bg-[#e4ede3]'}"
+        class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs sm:text-sm font-bold transition shadow-xs {requestFilter === 'rejected' ? 'bg-rose-600 text-white ring-2 ring-rose-600/25' : 'bg-white border border-[#dce3dc] text-[#556157] hover:bg-[#f4f7f4]'}"
         on:click={() => (requestFilter = 'rejected')}
       >
-        ไม่อนุมัติ ({rejectedRequests.length})
+        <span>ไม่อนุมัติ</span>
+        <span class="rounded-full px-2 py-0.5 text-xs font-bold {requestFilter === 'rejected' ? 'bg-white/25 text-white' : 'bg-rose-50 text-rose-700'}">
+          {rejectedRequests.length}
+        </span>
       </button>
 
       <button
         type="button"
-        class="rounded-lg px-3.5 py-1.5 text-xs font-bold transition {requestFilter === 'all' ? 'bg-[#3b453e] text-white shadow-xs' : 'bg-[#f0f4ef] text-[#5e6960] hover:bg-[#e4ede3]'}"
+        class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs sm:text-sm font-bold transition shadow-xs {requestFilter === 'all' ? 'bg-[#28322b] text-white ring-2 ring-black/10' : 'bg-white border border-[#dce3dc] text-[#556157] hover:bg-[#f4f7f4]'}"
         on:click={() => (requestFilter = 'all')}
       >
-        ทั้งหมด ({rangeRequests.length})
+        <span>ทั้งหมด</span>
+        <span class="rounded-full px-2 py-0.5 text-xs font-bold {requestFilter === 'all' ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-700'}">
+          {rangeRequests.length}
+        </span>
       </button>
     </div>
 
@@ -512,8 +527,48 @@
           กำลังโหลดรายการคำขอ...
         </div>
       {:else if filteredRequests.length === 0}
-        <div class="rounded-2xl border border-dashed border-[#d8d8d0] py-16 text-center text-[#7c857e]">
-          ไม่มีคำขอในหมวดหมู่นี้
+        <div class="rounded-2xl border border-dashed border-[#d4ddd4] bg-white py-14 px-6 text-center shadow-2xs">
+          <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#eef3ed] text-sage">
+            <PackageOpen size={24} />
+          </div>
+          <p class="text-base font-bold text-ink">ไม่มีคำขอในหมวดหมู่นี้</p>
+          <p class="mt-1 text-xs text-[#7c857e]">
+            {requestFilter === 'pending'
+              ? 'ขณะนี้ไม่มีคำขอที่รอผู้ดูแลตรวจสอบและอนุมัติ'
+              : requestFilter === 'pending_teacher'
+                ? 'ขณะนี้ไม่มีคำขอที่รออาจารย์รับทราบ'
+                : requestFilter === 'approved'
+                  ? 'ไม่มีรายการที่อยู่ระหว่างการยืมในขณะนี้'
+                  : requestFilter === 'overdue'
+                    ? 'ไม่มีรายการที่เกินกำหนดคืน'
+                    : requestFilter === 'returned'
+                      ? 'ยังไม่มีรายการที่ส่งคืนแล้ว'
+                      : requestFilter === 'rejected'
+                        ? 'ไม่มีรายการที่ไม่อนุมัติ'
+                        : 'ยังไม่มีประวัติคำขอยืมในระบบ'}
+          </p>
+          {#if rangeRequests.length > 0}
+            <div class="mt-5 flex flex-wrap justify-center gap-2">
+              {#if requestFilter !== 'all'}
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-1.5 rounded-xl border border-[#c4d2c5] bg-[#f8faf7] px-4 py-2 text-xs font-bold text-ink hover:bg-[#ebf1eb] transition"
+                  on:click={() => (requestFilter = 'all')}
+                >
+                  ดูคำขอทั้งหมด ({rangeRequests.length})
+                </button>
+              {/if}
+              {#if returnedRequests.length > 0 && requestFilter !== 'returned'}
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-1.5 rounded-xl border border-teal-200 bg-teal-50 px-4 py-2 text-xs font-bold text-teal-800 hover:bg-teal-100 transition"
+                  on:click={() => (requestFilter = 'returned')}
+                >
+                  ดูรายการคืนแล้ว ({returnedRequests.length})
+                </button>
+              {/if}
+            </div>
+          {/if}
         </div>
       {/if}
 
@@ -826,4 +881,29 @@
       </div>
     </div>
   {/if}
+
+  <!-- BOTTOM SECTION: Prominent Stats Dashboard (เอา stat ไปไว้ล่างด้วย ให้ใหญ่ๆ) -->
+  <section class="mt-14 border-t border-[#e2e8e1] pt-8" aria-label="สถิติภาพรวมระบบ">
+    <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h2 class="text-xl font-bold text-ink">ภาพรวมและสถิติระบบ</h2>
+        <p class="mt-0.5 text-xs text-[#737d75]">
+          วิเคราะห์แนวโน้มการยืม–คืนและสถานะอุปกรณ์ทั้งหมดในระบบ
+        </p>
+      </div>
+    </div>
+
+    <AdminStats
+      stats={activeStats}
+      {selectedRange}
+      activeFilter={requestFilter}
+      loading={statsLoading}
+      error={statsError}
+      {lastUpdated}
+      {isRealtime}
+      onRangeChange={handleRangeChange}
+      onDrilldown={handleDrilldown}
+      onRefresh={() => refreshDashboardData(selectedRange)}
+    />
+  </section>
 </main>

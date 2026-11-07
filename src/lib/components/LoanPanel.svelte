@@ -72,7 +72,7 @@
             <select bind:value={teacherId} required class="mt-1 w-full rounded-lg border border-[#c4d6c5] p-2.5 text-sm bg-white">
               <option value="">-- เลือกอาจารย์ผู้รับทราบคำขอ --</option>
               {#each teachers as teacher}
-                <option value={teacher.id}>{teacher.name || teacher.email}</option>
+                <option value={teacher.id}>{teacher.name ? teacher.name + " (" + (teacher.email || "-") + ")" : (teacher.email || teacher.id)}</option>
               {/each}
             </select>
             <p class="mt-1 text-xs text-[#7d877e]">คำขอจะถูกส่งให้อาจารย์กดรับทราบก่อน จึงจะส่งต่อให้ผู้ดูแลอนุมัติ</p>

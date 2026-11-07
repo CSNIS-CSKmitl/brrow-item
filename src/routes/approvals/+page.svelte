@@ -103,9 +103,11 @@
 
   function teacherName(request) {
     const t = request.expand?.teacher;
+    if (t?.name && t?.email) return `${t.name} (${t.email})`;
     if (t?.name) return t.name;
     if (t?.email) return t.email;
     const found = $teachers.find((entry) => entry.id === request.teacher);
+    if (found?.name && found?.email) return `${found.name} (${found.email})`;
     if (found?.name) return found.name;
     if (found?.email) return found.email;
     return request.teacher || 'ไม่ระบุอาจารย์';
