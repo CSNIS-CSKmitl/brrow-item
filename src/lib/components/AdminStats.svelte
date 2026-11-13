@@ -1,4 +1,4 @@
-<script>
+﻿<script>
   import {
     RefreshCw,
     AlertTriangle,
@@ -74,7 +74,7 @@
             ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
             : 'border-slate-200 bg-slate-50 text-slate-600'}"
         >
-          <Radio size={12} class={isRealtime ? "animate-pulse" : ""} />
+          <Radio size={12} class={isRealtime ? "" : ""} />
           {isRealtime ? "เชื่อมต่อแบบเรียลไทม์" : "ข้อมูลล่าสุด"}
         </span>
       </div>
@@ -96,7 +96,7 @@
             class="rounded-lg px-3 py-1.5 text-xs font-bold transition {selectedRange ===
             range.value
               ? 'bg-sage text-white shadow-sm'
-              : 'text-[#637067] hover:bg-white'}"
+              : 'text-[var(--text-secondary)] hover:bg-white'}"
             aria-pressed={selectedRange === range.value}
             on:click={() => onRangeChange(range.value)}>{range.label}</button
           >
@@ -119,7 +119,7 @@
       aria-label="กำลังโหลดสถิติ"
     >
       {#each Array(4) as _}<div
-          class="h-28 animate-pulse rounded-2xl border border-[#e2e8e1] bg-white"
+          class="h-28 rounded-2xl border border-[var(--border)] bg-white"
         ></div>{/each}
     </div>
   {:else if error}
@@ -151,8 +151,8 @@
         on:click={() => chooseFilter("all")}
       >
         <div class="flex items-center justify-between">
-          <p class="text-xs font-bold uppercase tracking-wider text-[#637067]">คำขอทั้งหมด</p>
-          <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-[#f0f4ef] text-sage">
+          <p class="text-xs font-bold text-[var(--text-secondary)]">คำขอทั้งหมด</p>
+          <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-[#f0f4ef] text-[var(--accent-ink)]">
             <ClipboardList size={18} />
           </div>
         </div>
@@ -171,7 +171,7 @@
         on:click={() => chooseFilter("pending_all")}
       >
         <div class="flex items-center justify-between">
-          <p class="text-xs font-bold uppercase tracking-wider text-amber-700">รอการอนุมัติ</p>
+          <p class="text-xs font-bold text-amber-700">รอการอนุมัติ</p>
           <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
             <Clock size={18} />
           </div>
@@ -191,7 +191,7 @@
         on:click={() => chooseFilter("approved")}
       >
         <div class="flex items-center justify-between">
-          <p class="text-xs font-bold uppercase tracking-wider text-emerald-700">กำลังยืม</p>
+          <p class="text-xs font-bold text-emerald-700">กำลังยืม</p>
           <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
             <PackageCheck size={18} />
           </div>
@@ -211,7 +211,7 @@
         on:click={() => chooseFilter("overdue")}
       >
         <div class="flex items-center justify-between">
-          <p class="text-xs font-bold uppercase tracking-wider text-rose-700">เกินกำหนดคืน</p>
+          <p class="text-xs font-bold text-rose-700">เกินกำหนดคืน</p>
           <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-50 text-rose-600">
             <AlertTriangle size={18} />
           </div>
@@ -235,7 +235,7 @@
             </p>
           </div>
           <span
-            class="rounded-lg bg-[#eef4ee] px-2.5 py-1 text-xs font-bold text-sage"
+            class="rounded-lg bg-[#eef4ee] px-2.5 py-1 text-xs font-bold text-[var(--accent-ink)]"
             >{trendTotal}</span
           >
         </div>
@@ -278,7 +278,7 @@
 
       <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
         <div class="rounded-2xl border border-[#dce4dc] bg-white p-4">
-          <div class="flex items-center gap-2 text-sage">
+          <div class="flex items-center gap-2 text-[var(--accent-ink)]">
             <Package size={17} />
             <p class="text-xs font-bold">อุปกรณ์พร้อมยืม</p>
           </div>

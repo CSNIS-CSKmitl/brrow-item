@@ -1,4 +1,4 @@
-<script>
+﻿<script>
   import { MapPin, Plus, Check } from '@lucide/svelte';
   import Button from './Button.svelte';
   import { canAdmin } from '../stores.js';
@@ -19,8 +19,8 @@
         {item.category}
       </span>
       {#if displayAvailable === 0}
-        <div class="absolute inset-0 flex items-center justify-center bg-[#17211b]/40 backdrop-blur-[1px]">
-          <span class="rounded-md bg-white px-2.5 py-1 text-xs font-medium text-[#17211b]">
+        <div class="absolute inset-0 flex items-center justify-center bg-[#17211b]/40 ">
+          <span class="rounded-md bg-white px-2.5 py-1 text-xs font-medium text-[var(--text)]">
             ถูกยืมหมดแล้ว
           </span>
         </div>

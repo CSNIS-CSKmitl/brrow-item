@@ -1,4 +1,4 @@
-<script>
+﻿<script>
   import { onMount, onDestroy } from 'svelte';
   import {
     Bell,
@@ -153,7 +153,7 @@
                   }}
                 >
                   <span class="flex items-center gap-2.5">
-                    <User size={15} class="text-sage" />
+                    <User size={15} class="text-[var(--accent-ink)]" />
                     ข้อมูลโปรไฟล์
                   </span>
                   <ChevronRight size={13} class="text-[#a0aaa1]" />
@@ -166,7 +166,7 @@
                   on:click={() => (profileOpen = false)}
                 >
                   <span class="flex items-center gap-2.5">
-                    <Clock3 size={15} class="text-sage" />
+                    <Clock3 size={15} class="text-[var(--accent-ink)]" />
                     คำขอยืมของฉัน
                   </span>
                   <ChevronRight size={13} class="text-[#a0aaa1]" />
@@ -180,7 +180,7 @@
                     on:click={() => (profileOpen = false)}
                   >
                     <span class="flex items-center gap-2.5">
-                      <Package size={15} class="text-sage" />
+                      <Package size={15} class="text-[var(--accent-ink)]" />
                       อนุมัติคำขอยืม
                     </span>
                     <ChevronRight size={13} class="text-[#a0aaa1]" />
@@ -195,7 +195,7 @@
                     on:click={() => (profileOpen = false)}
                   >
                     <span class="flex items-center gap-2.5">
-                      <Shield size={15} class="text-sage" />
+                      <Shield size={15} class="text-[var(--accent-ink)]" />
                       ระบบผู้ดูแล (Admin)
                     </span>
                     <ChevronRight size={13} class="text-[#a0aaa1]" />
@@ -248,7 +248,7 @@
     <div class="w-full max-w-md rounded-3xl border border-[#e2e6df] bg-white p-6 shadow-2xl">
       <div class="flex items-center justify-between border-b border-[#eef2ec] pb-4">
         <div class="flex items-center gap-2.5">
-          <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-[#eef4ee] text-sage">
+          <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-[#eef4ee] text-[var(--accent-ink)]">
             <User size={18} />
           </div>
           <div>
@@ -299,7 +299,7 @@
 
           <div class="flex justify-between rounded-xl bg-[#fafbf9] px-3.5 py-2.5 border border-[#edf1ec]">
             <span class="font-medium text-[#778078]">บทบาทในระบบ</span>
-            <span class="font-bold text-sage">{roleTitle($userType)}</span>
+            <span class="font-bold text-[var(--accent-ink)]">{roleTitle($userType)}</span>
           </div>
 
           <div class="flex justify-between rounded-xl bg-[#fafbf9] px-3.5 py-2.5 border border-[#edf1ec]">

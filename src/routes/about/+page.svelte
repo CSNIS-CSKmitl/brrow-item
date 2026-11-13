@@ -1,6 +1,6 @@
-<main class="mx-auto max-w-5xl px-5 py-20 lg:px-8">
+﻿<main class="mx-auto max-w-5xl px-5 py-20 lg:px-8">
   <div class="rounded-3xl bg-ink px-8 py-14 text-center text-white md:px-16">
-    <p class="text-xs font-bold uppercase tracking-[.16em] text-[#b7d2bc]">
+    <p class="text-xs font-bold text-[#b7d2bc]">
       ABOUT BORROWLY
     </p>
     <h1 class="mt-4 text-4xl font-bold">ยืมของได้ ใช้ทรัพยากรให้คุ้ม</h1>

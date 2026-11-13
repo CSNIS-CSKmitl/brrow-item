@@ -1,4 +1,4 @@
-<script>
+﻿<script>
   import { ArrowRight, CalendarDays, Check, X } from '@lucide/svelte';
   import Button from './Button.svelte';
   import { canAdmin } from '../stores.js';
@@ -26,11 +26,11 @@
 <svelte:window on:keydown={(e) => { if (open && e.key === 'Escape') onClose(); }} />
 
 {#if open}
-  <button type="button" class="fixed inset-0 z-30 cursor-default bg-ink/25 backdrop-blur-[2px]" aria-label="ปิดหน้าส่งคำขอยืม" on:click={onClose}></button>
+  <button type="button" class="fixed inset-0 z-30 cursor-default bg-ink/25 " aria-label="ปิดหน้าส่งคำขอยืม" on:click={onClose}></button>
   <div role="dialog" aria-modal="true" aria-label="ยืนยันการยืมของ" class="fixed right-0 top-0 z-40 flex h-full w-full max-w-md flex-col bg-cream shadow-2xl">
     <div class="flex items-center justify-between border-b border-[#e7e5df] px-6 py-5">
       <div>
-        <p class="text-xs font-semibold uppercase tracking-[.16em] text-sage">ยืนยันการยืม</p>
+        <p class="text-xs font-semibold text-[var(--accent-ink)]">ยืนยันการยืม</p>
         <h2 class="mt-1 text-xl font-bold text-ink">รายการของที่เลือก</h2>
       </div>
       <button class="icon-btn" on:click={onClose}><X size={20}/></button>

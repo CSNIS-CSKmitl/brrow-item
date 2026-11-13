@@ -1,4 +1,4 @@
-<script>
+﻿<script>
   import { CheckCircle2, Search, SlidersHorizontal, Package, ArrowUpRight } from '@lucide/svelte';
   import ItemCard from "../lib/components/ItemCard.svelte";
   import Button from "../lib/components/Button.svelte";
@@ -118,7 +118,7 @@
   <div class="fixed inset-0 z-40 grid place-items-center p-4">
     <button
       type="button"
-      class="absolute inset-0 cursor-default bg-[#17211b]/30 backdrop-blur-[2px]"
+      class="absolute inset-0 cursor-default bg-[#17211b]/30 "
       aria-label="ปิดรายละเอียดของ"
       on:click={() => (detailItem = null)}
     ></button>
@@ -134,7 +134,7 @@
         class="h-48 w-full object-cover"
       />
       <div class="p-5">
-        <span class="rounded-md border border-[#e8e5df] bg-[#fbfaf7] px-2 py-0.5 font-mono text-[11px] text-[#4a6354]">
+        <span class="rounded-md border border-[#e8e5df] bg-[var(--bg)] px-2 py-0.5 font-mono text-[11px] text-[#4a6354]">
           {detailItem.category}
         </span>
         <h2 class="mt-2 text-base font-semibold text-ink">{detailItem.name}</h2>

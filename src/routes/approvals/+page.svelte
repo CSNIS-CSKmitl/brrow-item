@@ -1,4 +1,4 @@
-<script>
+﻿<script>
   import { onMount, onDestroy } from 'svelte';
   import { Check, Clock3, Download, Filter, History, ListFilter, RotateCcw, X } from '@lucide/svelte';
   import Button from '../../lib/components/Button.svelte';
@@ -262,7 +262,7 @@
         disabled={filteredRequests.length === 0}
         title="ดาวน์โหลดรายการที่กำลังแสดงเป็นไฟล์ CSV"
       >
-        <Download size={16} class="text-sage" />
+        <Download size={16} class="text-[var(--accent-ink)]" />
         <span>Export CSV ({filteredRequests.length})</span>
       </button>
     {/if}
@@ -351,7 +351,7 @@
                   title="ดาวน์โหลดคำขอนี้เป็นไฟล์ CSV"
                   on:click={() => exportSingleRequestToCSV(request, $items)}
                 >
-                  <Download size={13} class="text-sage" /> Export CSV
+                  <Download size={13} class="text-[var(--accent-ink)]" /> Export CSV
                 </button>
               {/if}
             </div>
@@ -403,7 +403,7 @@
             {/if}
             {#if request.asset_tags || (request.status !== 'rejected' && request.adminComment)}
               <div class="rounded-lg bg-[#f4f7f4] border border-[#dbe7dc] px-3 py-2 text-sm text-[#355238]">
-                <span class="text-xs font-bold text-sage">หมายเลขเครื่อง / เลขครุภัณฑ์ / MAC Address:</span>
+                <span class="text-xs font-bold text-[var(--accent-ink)]">หมายเลขเครื่อง / เลขครุภัณฑ์ / MAC Address:</span>
                 <div class="mt-1 flex flex-wrap items-center gap-1.5">
                   {#each (request.asset_tags || (request.status !== 'rejected' ? request.adminComment : '') || '').split(',').map((s) => s.trim()).filter(Boolean) as mac}
                     <span class="inline-flex items-center font-mono text-xs font-bold bg-white border border-[#c6d7c7] px-2.5 py-1 rounded-md text-ink shadow-2xs">

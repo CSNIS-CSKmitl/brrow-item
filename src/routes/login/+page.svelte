@@ -1,4 +1,4 @@
-<script>
+﻿<script>
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import { ArrowRight, LockKeyhole, Package } from '@lucide/svelte';
@@ -56,7 +56,7 @@
     <p class="mt-2 text-center text-sm text-[#7c857e]">เข้าสู่ระบบด้วยบัญชีองค์กรผ่าน OIDC/OAuth</p>
     <button
       type="button"
-      class="mt-8 flex w-full items-center justify-center gap-2 rounded-xl border border-[#c9d2c8] bg-white px-4 py-3 text-sm font-bold text-sage hover:bg-[#edf2ed]"
+      class="mt-8 flex w-full items-center justify-center gap-2 rounded-xl border border-[#c9d2c8] bg-white px-4 py-3 text-sm font-bold text-[var(--accent-ink)] hover:bg-[#edf2ed]"
       on:click={handleOIDC}
     >
       <ArrowRight size={17} /> Login with OIDC

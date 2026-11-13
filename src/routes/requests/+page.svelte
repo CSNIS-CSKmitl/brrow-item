@@ -1,4 +1,4 @@
-<script>
+﻿<script>
   import { onMount, onDestroy } from 'svelte';
   import { Check, Download, Pencil, X } from '@lucide/svelte';
   import { items as mockItems } from '../../lib/mock-data.js';
@@ -169,7 +169,7 @@
                   title="ดาวน์โหลดคำขอนี้เป็นไฟล์ CSV"
                   on:click={() => exportSingleRequestToCSV(request, $items)}
                 >
-                  <Download size={13} class="text-sage" /> Export CSV
+                  <Download size={13} class="text-[var(--accent-ink)]" /> Export CSV
                 </button>
               {/if}
               <span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold {getStatusBadgeClass(request.status)}">
@@ -197,7 +197,7 @@
             {#if request.note}<p class="mt-1 text-sm text-[#778078]">หมายเหตุ: {request.note}</p>{/if}
             {#if (request.asset_tags || request.adminComment) && request.status !== 'rejected'}
               <div class="mt-3 rounded-lg bg-[#eef7ee] border border-[#d3e5d3] p-3">
-                <span class="text-xs font-bold text-sage">หมายเลขเครื่อง / MAC Address:</span>
+                <span class="text-xs font-bold text-[var(--accent-ink)]">หมายเลขเครื่อง / MAC Address:</span>
                 <div class="mt-1 flex flex-wrap items-center gap-1.5">
                   {#each (request.asset_tags || request.adminComment || '').split(',').map((s) => s.trim()).filter(Boolean) as mac}
                     <span class="inline-flex items-center font-mono text-xs font-bold bg-white border border-[#c6d7c7] px-2.5 py-1 rounded-md text-ink shadow-2xs">
@@ -249,7 +249,7 @@
                 </div>
               </form>
             {:else}
-              <button type="button" class="mt-4 inline-flex items-center gap-2 rounded-lg border border-[#c9d2c8] px-3 py-2 text-xs font-bold text-sage hover:bg-[#edf2ed]" on:click={() => startEditing(request)}>
+              <button type="button" class="mt-4 inline-flex items-center gap-2 rounded-lg border border-[#c9d2c8] px-3 py-2 text-xs font-bold text-[var(--accent-ink)] hover:bg-[#edf2ed]" on:click={() => startEditing(request)}>
                 <Pencil size={14}/>แก้ไขคำขอ
               </button>
               <button type="button" class="ml-2 inline-flex items-center gap-2 rounded-lg border border-rose-200 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-50" on:click={() => cancelRequest(request)}>

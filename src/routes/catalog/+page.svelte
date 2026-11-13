@@ -1,4 +1,4 @@
-<script>
+﻿<script>
   import ItemCard from "../../lib/components/ItemCard.svelte";
   import Button from "../../lib/components/Button.svelte";
   import { items, itemsLoaded, itemsLoading, selectedItems, toggleItem } from "../../lib/stores.js";
@@ -15,11 +15,11 @@
     <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3" aria-busy="true" aria-label="กำลังโหลดรายการของ">
       {#each Array(3) as _}
         <div class="overflow-hidden rounded-2xl border border-[#e4e5de] bg-white">
-          <div class="h-52 animate-pulse bg-[#e9ede7]"></div>
+          <div class="h-52 bg-[#e9ede7]"></div>
           <div class="space-y-3 p-4">
-            <div class="h-5 w-2/3 animate-pulse rounded bg-[#e9ede7]"></div>
-            <div class="h-4 w-full animate-pulse rounded bg-[#f0f2ee]"></div>
-            <div class="h-10 w-full animate-pulse rounded-xl bg-[#e9ede7]"></div>
+            <div class="h-5 w-2/3 rounded bg-[#e9ede7]"></div>
+            <div class="h-4 w-full rounded bg-[#f0f2ee]"></div>
+            <div class="h-10 w-full rounded-xl bg-[#e9ede7]"></div>
           </div>
         </div>
       {/each}
@@ -62,7 +62,7 @@
         class="h-52 w-full object-cover"
       />
       <div class="p-6">
-        <p class="text-xs font-bold text-sage">{detailItem.category}</p>
+        <p class="text-xs font-bold text-[var(--accent-ink)]">{detailItem.category}</p>
         <h2 class="mt-2 text-xl font-bold text-ink">{detailItem.name}</h2>
         <p class="mt-3 text-sm leading-7 text-[#778078]">
           {detailItem.description}

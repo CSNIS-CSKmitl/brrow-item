@@ -1,4 +1,4 @@
-<script>
+﻿<script>
   import { onMount, onDestroy } from 'svelte';
   import { Trash2, Plus, Pencil, PackageOpen, Check, X, Download, Clock3, Package, RotateCcw } from '@lucide/svelte';
   import Button from '../../lib/components/Button.svelte';
@@ -384,7 +384,7 @@
       on:click={exportCSV}
       title="ส่งออกข้อมูลหน้าปัจจุบันเป็นไฟล์ CSV (รองรับภาษาไทยใน Excel)"
     >
-      <Download size={16} class="text-sage" />
+      <Download size={16} class="text-[var(--accent-ink)]" />
       <span>
         {activeMainTab === 'requests' ? `Export คำขอยืม (${filteredRequests.length})` : `Export รายการของ (${$items.length})`}
       </span>
@@ -530,7 +530,7 @@
         </div>
       {:else if filteredRequests.length === 0}
         <div class="rounded-2xl border border-dashed border-[#d4ddd4] bg-white py-14 px-6 text-center shadow-2xs">
-          <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#eef3ed] text-sage">
+          <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#eef3ed] text-[var(--accent-ink)]">
             <PackageOpen size={24} />
           </div>
           <p class="text-base font-bold text-ink">ไม่มีคำขอในหมวดหมู่นี้</p>
@@ -597,7 +597,7 @@
                   title="ดาวน์โหลดคำขอนี้เป็นไฟล์ CSV"
                   on:click={() => exportSingleRequestToCSV(request, $items)}
                 >
-                  <Download size={13} class="text-sage" /> Export CSV
+                  <Download size={13} class="text-[var(--accent-ink)]" /> Export CSV
                 </button>
               </div>
 
@@ -648,7 +648,7 @@
               {/if}
               {#if request.asset_tags || (request.status !== 'rejected' && request.adminComment)}
                 <div class="rounded-lg bg-[#f4f7f4] border border-[#dbe7dc] px-3 py-2 text-sm text-[#355238]">
-                  <span class="text-xs font-bold text-sage">หมายเลขเครื่อง / เลขครุภัณฑ์ / MAC Address:</span>
+                  <span class="text-xs font-bold text-[var(--accent-ink)]">หมายเลขเครื่อง / เลขครุภัณฑ์ / MAC Address:</span>
                   <div class="mt-1 flex flex-wrap items-center gap-1.5">
                     {#each (request.asset_tags || (request.status !== 'rejected' ? request.adminComment : '') || '').split(',').map((s) => s.trim()).filter(Boolean) as mac}
                       <span class="inline-flex items-center font-mono text-xs font-bold bg-white border border-[#c6d7c7] px-2.5 py-1 rounded-md text-ink shadow-2xs">
@@ -763,7 +763,7 @@
         </div>
         <label>สถานที่จัดเก็บ<input bind:value={form.location} placeholder="เช่น ห้อง 301" /></label>
         <label class="flex items-center gap-2 cursor-pointer pt-1">
-          <input type="checkbox" bind:checked={form.is_active} class="h-4 w-4 rounded border-[#c4d6c5] text-sage focus:ring-sage" />
+          <input type="checkbox" bind:checked={form.is_active} class="h-4 w-4 rounded border-[#c4d6c5] text-[var(--accent-ink)] focus:ring-sage" />
           <span class="text-sm font-semibold text-ink">เปิดให้ยืมในแคตตาล็อก (Active)</span>
         </label>
         {#if itemError}
@@ -860,7 +860,7 @@
             {#if isAdmin($user) || getUserType($user) === 'superadmin'}
               <button
                 type="button"
-                class="icon-btn text-sage"
+                class="icon-btn text-[var(--accent-ink)]"
                 aria-label="แก้ไข {item.name}"
                 title="แก้ไขข้อมูลของ"
                 on:click={() => startEditItem(item)}
@@ -885,7 +885,7 @@
   {/if}
 
   <!-- BOTTOM SECTION: Prominent Stats Dashboard (เอา stat ไปไว้ล่างด้วย ให้ใหญ่ๆ) -->
-  <section class="mt-14 border-t border-[#e2e8e1] pt-8" aria-label="สถิติภาพรวมระบบ">
+  <section class="mt-14 border-t border-[var(--border)] pt-8" aria-label="สถิติภาพรวมระบบ">
     <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
       <div>
         <h2 class="text-xl font-bold text-ink">ภาพรวมและสถิติระบบ</h2>
