@@ -26,8 +26,8 @@
 <svelte:window on:keydown={(e) => { if (open && e.key === 'Escape') onClose(); }} />
 
 {#if open}
-  <button type="button" class="fixed inset-0 z-30 cursor-default bg-ink/25 " aria-label="ปิดหน้าส่งคำขอยืม" on:click={onClose}></button>
-  <div role="dialog" aria-modal="true" aria-label="ยืนยันการยืมของ" class="fixed right-0 top-0 z-40 flex h-full w-full max-w-md flex-col bg-cream shadow-2xl">
+  <button type="button" class="fixed inset-0 z-[60] cursor-default bg-ink/25 backdrop-blur-[1px]" aria-label="ปิดหน้าส่งคำขอยืม" on:click={onClose}></button>
+  <div role="dialog" aria-modal="true" aria-label="ยืนยันการยืมของ" class="fixed right-0 top-0 z-[70] flex h-full w-full max-w-md flex-col bg-cream shadow-2xl">
     <div class="flex items-center justify-between border-b border-[#e7e5df] px-6 py-5">
       <div>
         <p class="text-xs font-semibold text-[var(--accent-ink)]">ยืนยันการยืม</p>
@@ -84,8 +84,8 @@
         <label>
           วันและเวลาที่ต้องการคืน <span class="text-rose-500">*</span>
           <div class="relative mt-1">
-            <CalendarDays class="absolute left-3 top-3 text-[#8a918b]" size={17}/>
-            <input class="pl-10 w-full rounded-lg border border-[#c4d6c5] p-2.5 text-sm" type="datetime-local" bind:value={dueDate} required />
+            <CalendarDays class="pointer-events-none absolute left-3 top-3 text-[#8a918b]" size={17}/>
+            <input class="w-full rounded-lg border border-[#c4d6c5] bg-white py-2.5 pr-2.5 pl-10 text-sm" type="datetime-local" bind:value={dueDate} required />
           </div>
         </label>
 

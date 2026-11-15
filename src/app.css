@@ -3,6 +3,9 @@
 
 @theme {
   --color-sage: #3d5a47;
+  --color-cream: #fafaf7;
+  --color-ink: #171717;
+  --color-clay: #c96b4b;
 }
 
 @custom-variant dark (&:where(.dark, .dark *));

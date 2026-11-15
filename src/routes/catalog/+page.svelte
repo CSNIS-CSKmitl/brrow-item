@@ -43,7 +43,7 @@
 </main>
 
 {#if detailItem}
-  <div class="fixed inset-0 z-40 grid place-items-center p-5">
+  <div class="fixed inset-0 z-[60] grid place-items-center p-5">
     <button
       type="button"
       class="absolute inset-0 cursor-default bg-ink/30"
