@@ -1,4 +1,4 @@
-﻿<script>
+<script>
   import { onMount, onDestroy } from 'svelte';
   import {
     Bell,

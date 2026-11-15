@@ -1,4 +1,4 @@
-﻿<script>
+<script>
   import { MapPin, Plus, Check } from '@lucide/svelte';
   import Button from './Button.svelte';
   import { canAdmin } from '../stores.js';

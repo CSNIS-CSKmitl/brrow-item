@@ -1,4 +1,4 @@
-﻿<script>
+<script>
   import ItemCard from "../../lib/components/ItemCard.svelte";
   import Button from "../../lib/components/Button.svelte";
   import { items, itemsLoaded, itemsLoading, selectedItems, toggleItem } from "../../lib/stores.js";

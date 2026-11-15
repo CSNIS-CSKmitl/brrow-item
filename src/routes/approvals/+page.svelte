@@ -1,4 +1,4 @@
-﻿<script>
+<script>
   import { onMount, onDestroy } from 'svelte';
   import { Check, Clock3, Download, Filter, History, ListFilter, RotateCcw, X } from '@lucide/svelte';
   import Button from '../../lib/components/Button.svelte';

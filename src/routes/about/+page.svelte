@@ -1,4 +1,4 @@
-﻿<main class="mx-auto max-w-5xl px-5 py-20 lg:px-8">
+<main class="mx-auto max-w-5xl px-5 py-20 lg:px-8">
   <div class="rounded-3xl bg-ink px-8 py-14 text-center text-white md:px-16">
     <p class="text-xs font-bold text-[#b7d2bc]">
       ABOUT BORROWLY

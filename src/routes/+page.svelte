@@ -1,4 +1,4 @@
-﻿<script>
+<script>
   import { CheckCircle2, Search, SlidersHorizontal, Package, ArrowUpRight } from '@lucide/svelte';
   import ItemCard from "../lib/components/ItemCard.svelte";
   import Button from "../lib/components/Button.svelte";

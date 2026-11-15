@@ -1,4 +1,4 @@
-﻿<script>
+<script>
   import { onMount, onDestroy } from 'svelte';
   import { Check, Download, Pencil, X } from '@lucide/svelte';
   import { items as mockItems } from '../../lib/mock-data.js';

@@ -1,4 +1,4 @@
-﻿<script>
+<script>
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import { ArrowRight, LockKeyhole, Package } from '@lucide/svelte';
