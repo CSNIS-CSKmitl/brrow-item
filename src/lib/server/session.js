@@ -34,7 +34,7 @@ export function userFromRecord(record) {
   else if (roles.includes("admin")) role = "admin";
   else if (roles.includes("teachers") || roles.includes("teacher"))
     role = "teachers";
-  else if (roles.includes("staff") || roles.includes("stuff")) role = "staff";
+  else if (roles.includes("staff")) role = "staff";
   else if (roles.includes("students") || roles.includes("student"))
     role = "students";
   return {

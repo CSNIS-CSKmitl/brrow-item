@@ -140,7 +140,6 @@ function addIdRole(id, set) {
   }
   if (id === "000000000000004" || id === "000000000000007") {
     set.add("staff");
-    set.add("stuff");
   }
   if (id === "000000000000005") set.add("head");
 }
@@ -177,7 +176,7 @@ export function getUserType(record = pb.authStore.record) {
   if (roles.includes("admin")) return "admin";
   if (roles.includes("teachers") || roles.includes("teacher"))
     return "teachers";
-  if (roles.includes("staff") || roles.includes("stuff")) return "staff";
+  if (roles.includes("staff")) return "staff";
   if (roles.includes("students") || roles.includes("student"))
     return "students";
   if (roles.includes("guests") || roles.includes("guest")) return "guests";

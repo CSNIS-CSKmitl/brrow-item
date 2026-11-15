@@ -17,7 +17,7 @@ function resolveRole(record) {
   if (roles.includes("admin")) return "admin";
   if (roles.includes("teachers") || roles.includes("teacher"))
     return "teachers";
-  if (roles.includes("staff") || roles.includes("stuff")) return "staff";
+  if (roles.includes("staff")) return "staff";
   if (roles.includes("students") || roles.includes("student"))
     return "students";
   return "user";
