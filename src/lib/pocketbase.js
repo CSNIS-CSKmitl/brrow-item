@@ -160,7 +160,6 @@ export function isAdmin(record = pb.authStore.record) {
   if (record.email === "log@cskmitl.com") return true;
   const roles = getUserRoles(record);
   return (
-    roles.includes("admin") ||
     roles.includes("superadmin") ||
     roles.includes("super_admin") ||
     roles.includes("head")

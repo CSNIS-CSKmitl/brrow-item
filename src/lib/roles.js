@@ -142,7 +142,6 @@ export function isBorrowlyAdmin(user) {
   if (user.email === "log@cskmitl.com") return true;
   const roles = getUserRoles(user);
   return (
-    roles.includes("admin") ||
     roles.includes("superadmin") ||
     roles.includes("super_admin") ||
     roles.includes("head")

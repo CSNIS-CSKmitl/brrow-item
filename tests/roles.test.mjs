@@ -6,10 +6,18 @@ test("isBorrowlyAdmin identifies authorized roles", () => {
   assert.equal(isBorrowlyAdmin({ email: "log@cskmitl.com" }), true);
   assert.equal(
     isBorrowlyAdmin({ expand: { user_type: { type: "admin" } } }),
-    true,
+    false,
+  );
+  assert.equal(
+    isBorrowlyAdmin({ expand: { user_type: { id: "000000000000000" } } }),
+    false,
   );
   assert.equal(
     isBorrowlyAdmin({ expand: { user_type: { type: "superadmin" } } }),
+    true,
+  );
+  assert.equal(
+    isBorrowlyAdmin({ expand: { user_type: { type: "super_admin" } } }),
     true,
   );
   assert.equal(
