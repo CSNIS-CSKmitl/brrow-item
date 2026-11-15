@@ -259,10 +259,6 @@
             {/if}
           {/if}
 
-          {#if request.status === 'cancelled'}
-            <div class="mt-5 rounded-xl bg-slate-50 p-4 text-sm font-semibold text-slate-700">คำขอนี้ถูกยกเลิกแล้ว</div>
-          {/if}
-
           {#if request.status === 'rejected' || request.status === 'cancelled'}
             <div class="mt-5 rounded-xl bg-[#fff1ef] p-4 text-sm font-semibold text-[#a34e43]">
               <div class="flex items-center gap-3">

@@ -3,7 +3,10 @@ import { adminPocketBase, getPocketBaseUrl } from "$lib/server/pocketbase";
 import { getUserRoles } from "$lib/roles";
 import PocketBase from "pocketbase";
 
-export async function GET() {
+export async function GET({ locals }) {
+  if (!locals.user) {
+    return json({ error: "กรุณาเข้าสู่ระบบก่อน" }, { status: 401 });
+  }
   try {
     let pb;
     try {

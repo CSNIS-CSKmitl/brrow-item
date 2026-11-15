@@ -40,6 +40,11 @@ export function userFromRecord(record) {
   return {
     id: record.id,
     email: record.email || "",
+    name: record.name || "",
+    username: record.username || "",
+    user_type: record.user_type || "",
+    expand: record.expand,
+    created: record.created || "",
     role,
     roles,
     isAdmin: isBorrowlyAdmin(record),

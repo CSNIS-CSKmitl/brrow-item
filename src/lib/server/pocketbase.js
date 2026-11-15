@@ -13,8 +13,8 @@ let sharedAdminAt = 0;
 let sharedAdminPromise = null;
 
 export async function adminPocketBase() {
-  const adminEmail = env.PB_ADMIN_EMAIL || "techasit2424@gmail.com";
-  const adminPassword = env.PB_ADMIN_PASSWORD || "born5415";
+  const adminEmail = env.PB_ADMIN_EMAIL || "";
+  const adminPassword = env.PB_ADMIN_PASSWORD || "";
   if (!adminEmail || !adminPassword) {
     throw new Error("admin credentials are not configured");
   }

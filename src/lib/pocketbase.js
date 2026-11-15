@@ -156,11 +156,11 @@ export function isSuperadmin(record = pb.authStore.record) {
 }
 
 export function isAdmin(record = pb.authStore.record) {
-  // admin printer,brrow,booking requires super_admin or head to access admin panel
   if (!record) return false;
   if (record.email === "log@cskmitl.com") return true;
   const roles = getUserRoles(record);
   return (
+    roles.includes("admin") ||
     roles.includes("superadmin") ||
     roles.includes("super_admin") ||
     roles.includes("head")

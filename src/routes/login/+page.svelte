@@ -53,13 +53,13 @@
       <Package size={24} />
     </div>
     <h1 class="mt-5 text-center text-2xl font-bold text-ink">เข้าสู่ระบบ Borrowly</h1>
-    <p class="mt-2 text-center text-sm text-[#7c857e]">เข้าสู่ระบบด้วยบัญชีองค์กรผ่าน OIDC/OAuth</p>
+    <p class="mt-2 text-center text-sm text-[#7c857e]">เข้าสู่ระบบด้วยบัญชี Google (@kmitl.ac.th)</p>
     <button
       type="button"
       class="mt-8 flex w-full items-center justify-center gap-2 rounded-xl border border-[#c9d2c8] bg-white px-4 py-3 text-sm font-bold text-[var(--accent-ink)] hover:bg-[#edf2ed]"
       on:click={handleOIDC}
     >
-      <ArrowRight size={17} /> Login with OIDC
+      <ArrowRight size={17} /> Login with Google
     </button>
     <div class="my-6 flex items-center gap-3 text-xs text-[#9ba39c]">
       <span class="h-px flex-1 bg-[#e7e5df]"></span>หรือเข้าสู่ระบบแบบเดิม<span class="h-px flex-1 bg-[#e7e5df]"></span>

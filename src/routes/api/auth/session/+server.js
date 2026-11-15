@@ -28,7 +28,17 @@ export async function POST({ request, cookies, url }) {
         .authRefresh({ expand: "user_type" });
       user = cacheSessionUser(payload.token, auth.record || payload.record);
     } catch {
-      user = cacheSessionUser(payload.token, payload.record);
+      return json(
+        { ok: false, error: "invalid or expired session token" },
+        { status: 401 },
+      );
+    }
+
+    if (!user) {
+      return json(
+        { ok: false, error: "invalid or expired session token" },
+        { status: 401 },
+      );
     }
 
     cookies.set(SESSION_COOKIE, payload.token, {
@@ -39,7 +49,7 @@ export async function POST({ request, cookies, url }) {
       maxAge: 60 * 60 * 24 * 7,
     });
 
-    return json({ ok: true, record: user || userFromRecord(payload.record) });
+    return json({ ok: true, record: user });
   } catch (err) {
     return json(
       { ok: false, error: "failed to establish session" },

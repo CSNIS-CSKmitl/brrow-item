@@ -42,7 +42,7 @@
       if ($userType === 'teachers') {
         const allTeacherRequests = await getLoanRequests('', $user?.id);
         requests = allTeacherRequests.filter((r) => r.teacher === $user?.id);
-      } else if ($userType === 'superadmin') {
+      } else if ($user?.isAdmin || isAdmin($user)) {
         requests = await getLoanRequests();
       } else {
         requests = [];
@@ -434,7 +434,7 @@
           {/if}
 
           <!-- Notice for Admin when status is still pending_teacher -->
-          {#if $userType === 'superadmin' && request.status === 'pending_teacher'}
+          {#if ($user?.isAdmin || isAdmin($user)) && request.status === 'pending_teacher'}
             <div class="self-start rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2 text-xs font-semibold text-amber-900 shadow-2xs">
               <span class="font-bold">⏳ รออาจารย์รับทราบก่อน</span>
               <p class="mt-0.5 text-[11px] text-amber-700">คำขอนี้ยังต้องรอให้อาจารย์กดรับทราบก่อน ผู้ดูแลจึงจะสามารถอนุมัติได้</p>
@@ -442,7 +442,7 @@
           {/if}
 
           <!-- Action Buttons for Superadmin / Admin -->
-          {#if $userType === 'superadmin' && request.status === 'pending_caretaker'}
+          {#if ($user?.isAdmin || isAdmin($user)) && request.status === 'pending_caretaker'}
             <div class="flex flex-wrap gap-2 self-start">
               <Button variant="outline" size="sm" on:click={() => startQuantityEditing(request)}>
                 <Check size={15} /> แก้จำนวน
@@ -457,7 +457,7 @@
                 <Check size={15} /> อนุมัติ
               </Button>
             </div>
-          {:else if $userType === 'superadmin' && request.status === 'approved'}
+          {:else if ($user?.isAdmin || isAdmin($user)) && request.status === 'approved'}
             <div class="flex flex-wrap gap-2 self-start">
               <Button
                 variant="outline"
@@ -494,7 +494,7 @@
         {/if}
 
         <!-- Inline Form for Superadmin Approving with Text Note (MAC address) -->
-        {#if approvingId === request.id && $userType === 'superadmin'}
+        {#if approvingId === request.id && ($user?.isAdmin || isAdmin($user))}
           <div class="mt-4 rounded-xl border border-[#cde0ce] bg-[#f7fbf7] p-4">
             <label class="text-sm font-bold text-ink">
               หมายเลข MAC Address (หากมีหลายเครื่อง ให้คั่นด้วยเครื่องหมายจุลภาค ,)
