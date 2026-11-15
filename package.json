@@ -11,12 +11,13 @@
     "start": "node server.js",
     "check": "svelte-kit sync && svelte-check",
     "check:watch": "svelte-kit sync && svelte-check --watch",
-    "test": "node --test src/lib/admin-stats.test.js tests/roles.test.mjs",
+    "test": "node --test src/lib/admin-stats.test.js tests/roles.test.mjs tests/notification.test.mjs",
     "setup:stats-db": "node --env-file-if-exists=.env scripts/setup-stats-db.mjs --apply",
     "refactor:db": "node --env-file-if-exists=.env scripts/refactor-db.mjs --apply"
   },
   "dependencies": {
     "@lucide/svelte": "^1.38.0",
+    "nodemailer": "^10.6.0",
     "pocketbase": "^0.27.0"
   },
   "devDependencies": {

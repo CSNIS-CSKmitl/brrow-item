@@ -205,7 +205,9 @@ export async function createLoanRequest({
   teacher,
 }) {
   const currentUser = pb.authStore.record;
-  const isTeacher = getUserType(currentUser) === "teachers";
+  const currentUserType = getUserType(currentUser);
+  const isTeacherOrStaff =
+    currentUserType === "teachers" || currentUserType === "staff";
   const isAdm = isAdmin(currentUser);
 
   const request = {
@@ -218,10 +220,10 @@ export async function createLoanRequest({
     dueDate,
     note,
     requester: currentUser?.id,
-    // ถ้า role เป็น อจ ให้ส่งตรงไปรอ admin อนุมัติ (status: pending_caretaker)
+    // ถ้า role เป็น อจ/staff ให้ส่งตรงไปรอ admin อนุมัติ (status: pending_caretaker)
     // ถ้า role เป็น นักศึกษา ให้ส่งไปรอ อจ. รับทราบก่อน (status: pending_teacher)
-    teacher: isTeacher || isAdm ? currentUser?.id : teacher,
-    status: isTeacher
+    teacher: isTeacherOrStaff || isAdm ? currentUser?.id : teacher,
+    status: isTeacherOrStaff
       ? "pending_caretaker"
       : isAdm
         ? "approved"
@@ -248,6 +250,16 @@ export async function createLoanRequest({
   } catch (err) {
     console.warn("[loan_items] Sync failed (non-blocking):", err);
   }
+
+  if (!isAdm && created?.id) {
+    fetch("/api/loans/notify", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: created.id, event: "created" }),
+    }).catch(() => {});
+  }
+
   return created;
 }
 
@@ -356,6 +368,13 @@ export async function updateLoanStatus(id, status, comment = "") {
         id,
         action: status === "approved" ? "approve" : "reject",
       }),
+    }).catch(() => {});
+  } else if (status === "pending_caretaker") {
+    fetch("/api/loans/notify", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, event: "teacher_approved" }),
     }).catch(() => {});
   }
 
