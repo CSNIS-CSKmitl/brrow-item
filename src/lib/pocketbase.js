@@ -250,7 +250,7 @@ export async function createLoanRequest({
     console.warn("[loan_items] Sync failed (non-blocking):", err);
   }
 
-  if (!isAdm && created?.id) {
+  if (created?.id) {
     fetch("/api/loans/notify", {
       method: "POST",
       credentials: "same-origin",
@@ -368,12 +368,20 @@ export async function updateLoanStatus(id, status, comment = "") {
         action: status === "approved" ? "approve" : "reject",
       }),
     }).catch(() => {});
-  } else if (status === "pending_caretaker") {
+  }
+
+  const notifyEvent =
+    status === "pending_caretaker"
+      ? "teacher_approved"
+      : status === "approved" || status === "rejected" || status === "returned"
+        ? status
+        : null;
+  if (notifyEvent) {
     fetch("/api/loans/notify", {
       method: "POST",
       credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, event: "teacher_approved" }),
+      body: JSON.stringify({ id, event: notifyEvent }),
     }).catch(() => {});
   }
 

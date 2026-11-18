@@ -3,9 +3,19 @@ import { env } from "$env/dynamic/private";
 import { adminPocketBase } from "$lib/server/pocketbase";
 import { isBorrowlyAdmin } from "$lib/roles";
 import {
+  resolveBorrowerEmail,
   resolveLoanRecipients,
+  sendBorrowerStatusEmail,
   sendLoanNotificationEmail,
 } from "$lib/server/notification";
+
+const ALLOWED_EVENTS = new Set([
+  "created",
+  "teacher_approved",
+  "approved",
+  "rejected",
+  "returned",
+]);
 
 export async function POST({ request, locals }) {
   if (!locals.user?.id) {
@@ -17,7 +27,7 @@ export async function POST({ request, locals }) {
     const id = String(body?.id || "").trim();
     const event = String(body?.event || "").trim();
 
-    if (!id || (event !== "created" && event !== "teacher_approved")) {
+    if (!id || !ALLOWED_EVENTS.has(event)) {
       return json({ ok: false, error: "invalid payload" }, { status: 400 });
     }
 
@@ -37,22 +47,25 @@ export async function POST({ request, locals }) {
     if (event === "teacher_approved" && !isAssignedTeacher && !isAdm) {
       return json({ error: "forbidden" }, { status: 403 });
     }
+    if (event === "rejected" && !isAssignedTeacher && !isAdm) {
+      return json({ error: "forbidden" }, { status: 403 });
+    }
+    if ((event === "approved" || event === "returned") && !isAdm) {
+      return json({ error: "forbidden" }, { status: 403 });
+    }
+
+    if (event === "teacher_approved" && record.status !== "pending_caretaker") {
+      return json({ ok: true, sent: false }, { status: 409 });
+    }
     if (
-      event === "teacher_approved" &&
-      record.status !== "pending_caretaker"
+      (event === "approved" || event === "rejected" || event === "returned") &&
+      record.status !== event
     ) {
       return json({ ok: true, sent: false }, { status: 409 });
     }
 
     const borrower = record.expand?.requester || locals.user;
-    const teacherEmail = record.expand?.teacher?.email || "";
-    const recipients = await resolveLoanRecipients(pb, {
-      event,
-      borrower,
-      teacherEmail,
-      actorEmail: event === "teacher_approved" ? locals.user.email : undefined,
-    });
-
+    const borrowerEmail = resolveBorrowerEmail(record, borrower);
     const expandedItems = Array.isArray(record.expand?.items)
       ? record.expand.items
       : [];
@@ -60,19 +73,54 @@ export async function POST({ request, locals }) {
       const qty = Number(record.quantities?.[item.id]) || 1;
       return `${item.name || item.id} x${qty}`;
     });
+    const actorName = locals.user.name || locals.user.email || "";
 
-    const sent = await sendLoanNotificationEmail(
-      {
-        to: recipients,
+    let approversSent = false;
+    let recipientsCount = 0;
+
+    if (event === "created" || event === "teacher_approved") {
+      const teacherEmail = record.expand?.teacher?.email || "";
+      const recipients = await resolveLoanRecipients(pb, {
         event,
-        requestRecord: record,
-        itemSummaries,
-        actorName: locals.user.name || locals.user.email || "",
-      },
-      env,
-    );
+        borrower,
+        teacherEmail,
+        actorEmail: event === "teacher_approved" ? locals.user.email : undefined,
+      });
+      recipientsCount = recipients.length;
+      if (recipients.length > 0) {
+        approversSent = await sendLoanNotificationEmail(
+          {
+            to: recipients,
+            event,
+            requestRecord: record,
+            itemSummaries,
+            actorName,
+          },
+          env,
+        );
+      }
+    }
 
-    return json({ ok: true, sent, recipientsCount: recipients.length });
+    const borrowerSent = borrowerEmail
+      ? await sendBorrowerStatusEmail(
+          {
+            to: borrowerEmail,
+            event,
+            requestRecord: record,
+            itemSummaries,
+            actorName,
+          },
+          env,
+        )
+      : false;
+
+    return json({
+      ok: true,
+      sent: approversSent || borrowerSent,
+      approversSent,
+      borrowerSent,
+      recipientsCount,
+    });
   } catch (err) {
     console.warn("[loans/notify] failed:", err);
     return json({ ok: true, sent: false });
