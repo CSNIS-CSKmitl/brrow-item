@@ -131,7 +131,7 @@
       <img
         src={detailItem.image}
         alt={detailItem.name}
-        class="h-48 w-full object-cover"
+        class="max-h-[60vh] w-full bg-[#f6f7f4] object-contain p-3"
       />
       <div class="p-5">
         <span class="rounded-md border border-[#e8e5df] bg-[var(--bg)] px-2 py-0.5 font-mono text-[11px] text-[#4a6354]">

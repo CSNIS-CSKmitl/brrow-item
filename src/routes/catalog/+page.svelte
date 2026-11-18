@@ -59,7 +59,7 @@
       <img
         src={detailItem.image}
         alt={detailItem.name}
-        class="h-52 w-full object-cover"
+        class="max-h-[60vh] w-full bg-[#f6f7f4] object-contain p-3"
       />
       <div class="p-6">
         <p class="text-xs font-bold text-[var(--accent-ink)]">{detailItem.category}</p>

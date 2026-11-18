@@ -13,8 +13,8 @@
 
 <article class="group flex flex-col justify-between overflow-hidden rounded-xl border border-[#e8e5df] bg-white transition-colors duration-150 hover:border-[#cbcfcb]">
   <button class="block w-full text-left" on:click={onOpen} aria-label="ดูรายละเอียด {item.name}">
-    <div class="relative h-48 overflow-hidden bg-[#edf0eb]">
-      <img src={item.image} alt={item.name} class="h-full w-full object-cover" />
+    <div class="relative h-48 overflow-hidden bg-[#f6f7f4]">
+      <img src={item.image} alt={item.name} class="h-full w-full object-contain p-2 transition-transform duration-200 group-hover:scale-[1.03]" />
       <span class="absolute left-2.5 top-2.5 rounded-md border border-white/60 bg-white/95 px-2 py-0.5 font-mono text-[11px] text-[#4a6354]">
         {item.category}
       </span>
