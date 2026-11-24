@@ -84,7 +84,7 @@
   <div class="mx-auto max-w-7xl px-5 py-4 lg:px-8">
     <div class="flex items-center justify-between">
       <a class="flex items-center gap-3" href="/">
-        <div class="brand-mark"><Package size={20} strokeWidth={2.5} /></div>
+        <img src="/logocs.png" alt="CS KMITL Logo" class="h-9 w-9 shrink-0 object-contain" />
         <span class="text-xl font-bold tracking-tight text-ink">borrowly<span class="text-clay">.</span></span>
       </a>
 
