@@ -1,5 +1,6 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
+  import { fade, fly, scale } from 'svelte/transition';
   import {
     Bell,
     ChevronRight,
@@ -80,22 +81,22 @@
   });
 </script>
 
-<header class="relative z-50 border-b border-[#e7e5df] bg-cream/90 backdrop-blur">
-  <div class="mx-auto max-w-7xl px-5 py-4 lg:px-8">
+<header class="sticky top-0 z-50 border-b border-[#e7e5df] bg-cream/92 backdrop-blur-md shadow-[0_1px_12px_rgba(23,23,23,0.04)] transition-shadow">
+  <div class="mx-auto max-w-7xl px-5 py-3.5 lg:px-8">
     <div class="flex items-center justify-between">
-      <a class="flex items-center gap-3" href="/">
+      <a class="flex items-center gap-3 transition-transform active:scale-[0.98]" href="/">
         <img src="/logocs.png" alt="CS KMITL Logo" class="h-9 w-9 shrink-0 object-contain" />
         <span class="text-xl font-bold tracking-tight text-ink">borrowly<span class="text-clay">.</span></span>
       </a>
 
       <nav class="hidden items-center gap-8 text-sm font-medium md:flex">
-        <a class={activeClass('/catalog', path)} href="/catalog">แคตตาล็อก</a>
-        <a class={activeClass('/requests', path)} href="/requests">คำขอยืม</a>
+        <a class="transition-colors {activeClass('/catalog', path)}" href="/catalog">แคตตาล็อก</a>
+        <a class="transition-colors {activeClass('/requests', path)}" href="/requests">คำขอยืม</a>
         {#if canApprove}
-          <a class={activeClass('/approvals', path)} href="/approvals">อนุมัติคำขอ</a>
+          <a class="transition-colors {activeClass('/approvals', path)}" href="/approvals">อนุมัติคำขอ</a>
         {/if}
         {#if canAdmin}
-          <a class={activeClass('/admin', path)} href="/admin">แอดมิน</a>
+          <a class="transition-colors {activeClass('/admin', path)}" href="/admin">แอดมิน</a>
         {/if}
       </nav>
 
@@ -105,7 +106,11 @@
         <button class="loan-pill" on:click={onOpenLoans}>
           <Package size={17} />
           <span>รายการยืม</span>
-          {#if loanCount}<b>{loanCount}</b>{/if}
+          {#if loanCount}
+            {#key loanCount}
+              <b class="animate-badge-pop">{loanCount}</b>
+            {/key}
+          {/if}
         </button>
 
         <!-- Profile Button & Option Menu -->
@@ -121,6 +126,7 @@
 
           {#if profileOpen}
             <div
+              transition:scale={{ start: 0.94, duration: 160 }}
               class="absolute right-0 top-[calc(100%+0.75rem)] z-[100] w-72 origin-top-right rounded-2xl border border-[#e2e5df] bg-white p-3 shadow-xl backdrop-blur-md"
             >
               <!-- Profile Summary Card -->

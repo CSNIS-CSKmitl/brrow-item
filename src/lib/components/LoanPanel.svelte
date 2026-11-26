@@ -1,4 +1,6 @@
 <script>
+  import { fade, fly } from 'svelte/transition';
+  import { cubicOut } from 'svelte/easing';
   import { ArrowRight, CalendarDays, Check, X } from '@lucide/svelte';
   import Button from './Button.svelte';
   import { canAdmin } from '../stores.js';
@@ -27,8 +29,20 @@
 <svelte:window on:keydown={(e) => { if (open && e.key === 'Escape') onClose(); }} />
 
 {#if open}
-  <button type="button" class="fixed inset-0 z-[60] cursor-default bg-ink/25 backdrop-blur-[1px]" aria-label="ปิดหน้าส่งคำขอยืม" on:click={onClose}></button>
-  <div role="dialog" aria-modal="true" aria-label="ยืนยันการยืมของ" class="fixed right-0 top-0 z-[70] flex h-full w-full max-w-md flex-col bg-cream shadow-2xl">
+  <button
+    type="button"
+    transition:fade={{ duration: 180 }}
+    class="fixed inset-0 z-[60] cursor-default bg-ink/30 backdrop-blur-[2px]"
+    aria-label="ปิดหน้าส่งคำขอยืม"
+    on:click={onClose}
+  ></button>
+  <div
+    role="dialog"
+    aria-modal="true"
+    aria-label="ยืนยันการยืมของ"
+    transition:fly={{ x: 420, duration: 260, opacity: 1, easing: cubicOut }}
+    class="fixed right-0 top-0 z-[70] flex h-full w-full max-w-md flex-col bg-cream shadow-2xl"
+  >
     <div class="flex items-center justify-between border-b border-[#e7e5df] px-6 py-5">
       <div>
         <p class="text-xs font-semibold text-[var(--accent-ink)]">ยืนยันการยืม</p>

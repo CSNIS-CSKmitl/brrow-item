@@ -2,6 +2,8 @@
   import '../app.css';
   import { version } from '$app/environment';
   import { onDestroy } from 'svelte';
+  import { fly } from 'svelte/transition';
+  import { CheckCircle2, AlertCircle, X } from '@lucide/svelte';
   import { page } from '$app/state';
   import Header from '../lib/components/Header.svelte';
   import LoanPanel from '../lib/components/LoanPanel.svelte';
@@ -16,6 +18,7 @@
     panelOpen,
     teachers,
     userType,
+    toastMessage,
     submitLoan,
     handleLogout,
     stopRealtime,
@@ -24,8 +27,19 @@
   let { data, children } = $props();
 
   let path = $derived(page.url.pathname.replace(/\/$/, '') || '/');
+  let toastTimer = null;
+
+  $effect(() => {
+    if ($toastMessage?.text) {
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        toastMessage.set({ type: '', text: '' });
+      }, 3200);
+    }
+  });
 
   onDestroy(() => {
+    if (toastTimer) clearTimeout(toastTimer);
     void stopRealtime();
   });
 </script>
@@ -77,4 +91,30 @@
     </nav>
   </footer>
   <LegalConsent userId={$user?.id ?? null} enabled={!['/privacy', '/terms'].includes(path)} />
+
+  {#if $toastMessage?.text}
+    <div
+      transition:fly={{ y: 24, duration: 220 }}
+      role="status"
+      aria-live="polite"
+      class="fixed bottom-5 right-5 z-[110] flex max-w-sm items-center gap-2.5 rounded-2xl border px-4 py-3 text-sm font-semibold shadow-xl backdrop-blur-md {$toastMessage.type === 'error'
+        ? 'border-rose-200 bg-rose-50/95 text-rose-900'
+        : 'border-emerald-200 bg-white/95 text-emerald-900'}"
+    >
+      {#if $toastMessage.type === 'error'}
+        <AlertCircle size={18} class="shrink-0 text-rose-600" />
+      {:else}
+        <CheckCircle2 size={18} class="shrink-0 text-emerald-600" />
+      {/if}
+      <span class="flex-1">{$toastMessage.text}</span>
+      <button
+        type="button"
+        class="rounded-lg p-1 text-[#89938b] hover:bg-black/5 hover:text-ink transition"
+        aria-label="ปิดการแจ้งเตือน"
+        onclick={() => toastMessage.set({ type: '', text: '' })}
+      >
+        <X size={14} />
+      </button>
+    </div>
+  {/if}
 </div>

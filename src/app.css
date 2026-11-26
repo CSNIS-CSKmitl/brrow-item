@@ -80,11 +80,14 @@ button {
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--surface);
-  transition: color 150ms cubic-bezier(0.2, 0, 0, 1), background-color 150ms cubic-bezier(0.2, 0, 0, 1);
+  transition: color 150ms cubic-bezier(0.2, 0, 0, 1), background-color 150ms cubic-bezier(0.2, 0, 0, 1), transform 140ms cubic-bezier(0.2, 0, 0, 1), box-shadow 150ms cubic-bezier(0.2, 0, 0, 1);
 }
 .icon-btn:hover {
   color: var(--text);
   background: var(--raised);
+}
+.icon-btn:active {
+  transform: scale(0.93);
 }
 .loan-pill {
   display: flex;
@@ -96,6 +99,14 @@ button {
   border-radius: 8px;
   font-size: 13px;
   font-weight: 500;
+  transition: transform 150ms cubic-bezier(0.2, 0, 0, 1), box-shadow 150ms cubic-bezier(0.2, 0, 0, 1), filter 150ms ease;
+}
+.loan-pill:hover {
+  filter: brightness(1.06);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 32%, transparent);
+}
+.loan-pill:active {
+  transform: scale(0.96);
 }
 .loan-pill b {
   display: grid;
@@ -107,7 +118,7 @@ button {
   background: #ffffff;
   border-radius: 6px;
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 .btn {
@@ -118,7 +129,10 @@ button {
   width: 100%;
   border-radius: 8px;
   font-weight: 500;
-  transition: background-color 150ms cubic-bezier(0.2, 0, 0, 1), color 150ms cubic-bezier(0.2, 0, 0, 1), border-color 150ms cubic-bezier(0.2, 0, 0, 1);
+  transition: background-color 150ms cubic-bezier(0.2, 0, 0, 1), color 150ms cubic-bezier(0.2, 0, 0, 1), border-color 150ms cubic-bezier(0.2, 0, 0, 1), transform 140ms cubic-bezier(0.2, 0, 0, 1), box-shadow 150ms cubic-bezier(0.2, 0, 0, 1), opacity 150ms ease;
+}
+.btn:not(:disabled):active {
+  transform: scale(0.97);
 }
 .btn.md {
   padding: 10px 16px;
@@ -354,4 +368,62 @@ label textarea {
 }
 .toast.error p {
   color: var(--negative);
+}
+
+@keyframes badgePop {
+  0% {
+    transform: scale(0.7);
+  }
+  55% {
+    transform: scale(1.26);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes checkPop {
+  0% {
+    transform: scale(0.55) rotate(-12deg);
+    opacity: 0.4;
+  }
+  60% {
+    transform: scale(1.2) rotate(4deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInUp {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-badge-pop {
+  animation: badgePop 260ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.animate-check-pop {
+  animation: checkPop 240ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-badge-pop,
+  .animate-check-pop,
+  .animate-fade-in-up {
+    animation: none !important;
+  }
 }

@@ -1,4 +1,5 @@
 <script>
+  import { slide } from 'svelte/transition';
   import { CalendarClock, Check, Clock, MapPin, AlertTriangle, PackageCheck } from '@lucide/svelte';
   import Button from './Button.svelte';
   import {
@@ -129,7 +130,7 @@
           </Button>
         </div>
       {:else}
-        <div class="mt-3 space-y-3 rounded-xl border border-[#d4dfd5] bg-white p-4">
+        <div transition:slide={{ duration: 220 }} class="mt-3 space-y-3 rounded-xl border border-[#d4dfd5] bg-white p-4">
           <div class="grid gap-3 sm:grid-cols-2">
             <label class="block text-xs font-bold text-ink">
               วันที่นัดรับ (จันทร์–ศุกร์) <span class="text-rose-500">*</span>

@@ -1,12 +1,13 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
-  import { Trash2, Plus, Pencil, PackageOpen, Check, X, Download, Clock3, Package, RotateCcw } from '@lucide/svelte';
+  import { fade, scale, slide } from 'svelte/transition';
+  import { Trash2, Plus, Pencil, PackageOpen, Check, X, Download, Clock3, Package, RotateCcw, Search, MapPin, EyeOff, Eye } from '@lucide/svelte';
   import Button from '../../lib/components/Button.svelte';
   import AdminStats from '../../lib/components/AdminStats.svelte';
   import LoanItemsList from '../../lib/components/LoanItemsList.svelte';
   import CaretakerPickupPanel from '../../lib/components/CaretakerPickupPanel.svelte';
   import { items as mockItems } from '../../lib/mock-data.js';
-  import { items, user, teachers, loadItems } from '../../lib/stores.js';
+  import { items, user, teachers, toastMessage, loadItems } from '../../lib/stores.js';
   import { createItem, updateItem, deleteItem, getLoanRequests, updateLoanStatus, markLoanReturned, getUserType, isAdmin, pb } from '../../lib/pocketbase.js';
   import { exportRequestsToCSV, exportSingleRequestToCSV, exportItemsToCSV, formatDateTime } from '../../lib/csv.js';
   import { getStatusBadgeClass, getStatusDotClass } from '../../lib/status.js';
@@ -247,14 +248,24 @@
   }
 
   // --- Items Management State ---
-  const emptyForm = () => ({ name: '', category: 'อุปกรณ์ไอที', description: '', image: '', available: 1, total: 1, location: '', is_active: true });
+  const emptyForm = () => ({ name: '', category: 'อุปกรณ์ไอที', description: '', image: '', available: 1, total: 1, location: '713', is_active: true });
   let form = emptyForm();
   let itemError = '';
   let itemSuccess = '';
   let editingItemId = '';
+  let showItemModal = false;
+  let itemSearch = '';
   let saving = false;
   let deletingId = '';
   let itemFilter = 'all'; // 'all' | 'active' | 'archived'
+
+  function openAddItemModal() {
+    editingItemId = '';
+    form = emptyForm();
+    itemError = '';
+    itemSuccess = '';
+    showItemModal = true;
+  }
 
   function startEditItem(item) {
     editingItemId = item.id;
@@ -270,9 +281,11 @@
       location: item.location || '',
       is_active: item.is_active !== false,
     };
+    showItemModal = true;
   }
 
   function cancelEditItem() {
+    showItemModal = false;
     editingItemId = '';
     form = emptyForm();
     itemError = '';
@@ -303,11 +316,13 @@
         items.update((list) => list.map((entry) => (entry.id === updated.id ? updated : entry)));
         cancelEditItem();
         itemSuccess = `บันทึกการแก้ไข "${updated.name}" เรียบร้อยแล้ว`;
+        toastMessage.set({ type: 'success', text: itemSuccess });
       } else {
         const created = await createItem(data);
         items.update((list) => [created, ...list]);
         cancelEditItem();
         itemSuccess = `เพิ่มรายการ "${created.name}" เรียบร้อยแล้ว`;
+        toastMessage.set({ type: 'success', text: itemSuccess });
       }
     } catch (cause) {
       itemError = cause?.response?.message || (editingItemId
@@ -328,8 +343,10 @@
       itemSuccess = activate
         ? `เปิดใช้งาน "${item.name}" ให้ยืมในระบบแล้ว`
         : `ยกเลิกการใช้งาน "${item.name}" (ซ่อนจากผู้ยืม) เรียบร้อยแล้ว`;
+      toastMessage.set({ type: 'success', text: itemSuccess });
     } catch (cause) {
       itemError = cause?.response?.message || 'ปรับสถานะอุปกรณ์ไม่สำเร็จ กรุณาตรวจสอบสิทธิ์ PocketBase';
+      toastMessage.set({ type: 'error', text: itemError });
     } finally {
       deletingId = '';
     }
@@ -341,22 +358,22 @@
     itemSuccess = '';
     deletingId = item.id;
     try {
-      // ลองลบจริงออกจาก DB ก่อน (กรณีของใหม่ที่ยังไม่เคยมีประวัติการยืม จะลบได้สำเร็จ)
       await deleteItem(item.id);
       items.update((list) => list.filter((entry) => entry.id !== item.id));
       if (editingItemId === item.id) cancelEditItem();
       itemSuccess = `ลบ "${item.name}" ออกจากระบบเรียบร้อยแล้ว`;
+      toastMessage.set({ type: 'success', text: itemSuccess });
     } catch (cause) {
-      // หากลบไม่สำเร็จเนื่องจากติดประวัติการยืมใน DB (เคยถูกยืมและคืนแล้ว)
-      // ให้ทำ Soft Delete โดยอัตโนมัติ เพื่อให้ประวัติการยืมเดิมไม่พัง
       console.warn('Hard delete failed, falling back to soft delete:', cause);
       try {
         const updated = await updateItem(item.id, { is_active: false });
         items.update((list) => list.map((entry) => (entry.id === updated.id ? updated : entry)));
         if (editingItemId === item.id) cancelEditItem();
-        itemSuccess = `เนื่องจาก "${item.name}" มีประวัติการยืมในระบบแล้ว จึงเปลี่ยนสถานะเป็น "ยกเลิกใช้งาน (ซ่อน)" เพื่อรักษาประวัติการยืมเดิมไว้`;
+        itemSuccess = `เนื่องจาก "${item.name}" มีประวัติการยืมในระบบแล้ว จึงเปลี่ยนสถานะเป็น "ยกเลิกใช้งาน (ซ่อน)"`;
+        toastMessage.set({ type: 'success', text: itemSuccess });
       } catch (softErr) {
         itemError = softErr?.response?.message || cause?.response?.message || 'ลบรายการไม่สำเร็จ กรุณาตรวจสอบสิทธิ์ PocketBase';
+        toastMessage.set({ type: 'error', text: itemError });
       }
     } finally {
       deletingId = '';
@@ -364,73 +381,112 @@
   }
 
   $: displayedItems = $items.filter((item) => {
-    if (itemFilter === 'active') return item.is_active !== false;
-    if (itemFilter === 'archived') return item.is_active === false;
-    return true;
+    if (itemFilter === 'active' && item.is_active === false) return false;
+    if (itemFilter === 'archived' && item.is_active !== false) return false;
+    const q = itemSearch.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      String(item.name || '').toLowerCase().includes(q) ||
+      String(item.category || '').toLowerCase().includes(q) ||
+      String(item.location || '').toLowerCase().includes(q)
+    );
   });
 </script>
 
-<svelte:window on:keydown={(e) => { if (e.key === 'Escape') { cancelApprove(); cancelReject(); } }} />
+<svelte:window on:keydown={(e) => { if (e.key === 'Escape') { cancelApprove(); cancelReject(); if (showItemModal) cancelEditItem(); } }} />
 
-<main class="mx-auto max-w-7xl px-5 py-12 lg:px-8">
-  <div class="flex flex-col justify-between gap-4 md:flex-row md:items-center mb-8">
-    <div>
-      <p class="eyebrow"><PackageOpen size={14} /> ADMIN DASHBOARD</p>
-      <h1 class="mt-2 text-3xl font-bold text-ink">แผงควบคุมผู้ดูแลระบบ</h1>
-      <p class="mt-2 text-sm text-[#7c857e]">
-        จัดการคำขอยืมของ อนุมัติพร้อมระบุข้อความ และส่งออกรายงาน CSV ได้ทั้งหมดในหน้านี้
-      </p>
+<main class="mx-auto max-w-7xl px-5 py-8 lg:px-8 animate-fade-in-up">
+  <!-- Redesigned Modern Admin Hero Bar -->
+  <section class="mb-7 rounded-2xl border border-[#e4e7e2] bg-white p-5 sm:p-6 shadow-xs">
+    <div class="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+      <div>
+        <div class="flex flex-wrap items-center gap-2">
+          <p class="eyebrow"><PackageOpen size={14} /> ADMIN WORKSPACE</p>
+          {#if isRealtime}
+            <span class="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700">
+              <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              Realtime
+            </span>
+          {/if}
+        </div>
+        <h1 class="mt-1.5 text-2xl sm:text-3xl font-bold tracking-tight text-ink">แผงควบคุมผู้ดูแลระบบ</h1>
+        <p class="mt-1 text-sm text-[#737d75]">
+          จัดการคำขอยืม–คืน นัดรับอุปกรณ์ ณ อาคารพระจอมเกล้า ห้อง 713 และคลังอุปกรณ์ทั้งหมดในที่เดียว
+        </p>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2.5">
+        {#if activeMainTab === 'items' && (isAdmin($user) || getUserType($user) === 'superadmin')}
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 rounded-xl bg-sage px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:brightness-110 active:scale-[0.97] transition"
+            on:click={openAddItemModal}
+          >
+            <Plus size={16} />
+            <span>เพิ่มอุปกรณ์ใหม่</span>
+          </button>
+        {/if}
+        <button
+          type="button"
+          class="inline-flex items-center gap-2 rounded-xl border border-[#d6ded6] bg-[#fafbf9] px-4 py-2.5 text-sm font-semibold text-ink shadow-2xs hover:bg-[#f0f4f0] active:scale-[0.97] transition"
+          on:click={exportCSV}
+          title="ส่งออกข้อมูลหน้าปัจจุบันเป็นไฟล์ CSV (รองรับภาษาไทยใน Excel)"
+        >
+          <Download size={16} class="text-[var(--accent-ink)]" />
+          <span>
+            {activeMainTab === 'requests' ? `Export คำขอยืม (${filteredRequests.length})` : `Export รายการของ (${$items.length})`}
+          </span>
+        </button>
+      </div>
     </div>
 
-    <!-- Export CSV Button -->
-    <button
-      type="button"
-      class="inline-flex items-center gap-2 self-start rounded-xl border border-[#c8d4c9] bg-white px-4 py-2.5 text-sm font-semibold text-ink shadow-sm hover:bg-[#f4f7f4] transition"
-      on:click={exportCSV}
-      title="ส่งออกข้อมูลหน้าปัจจุบันเป็นไฟล์ CSV (รองรับภาษาไทยใน Excel)"
-    >
-      <Download size={16} class="text-[var(--accent-ink)]" />
-      <span>
-        {activeMainTab === 'requests' ? `Export คำขอยืม (${filteredRequests.length})` : `Export รายการของ (${$items.length})`}
-      </span>
-    </button>
-  </div>
+    <!-- Main Segmented Navigation Tabs -->
+    <div class="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[#eef0ec] pt-4">
+      <div class="inline-flex rounded-xl bg-[#f2f4f0] p-1 gap-1">
+        <button
+          type="button"
+          class="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold transition-all active:scale-[0.98] {activeMainTab === 'requests' ? 'bg-white text-ink shadow-xs' : 'text-[#667168] hover:text-ink'}"
+          on:click={() => (activeMainTab = 'requests')}
+        >
+          <Clock3 size={16} class={activeMainTab === 'requests' ? 'text-sage' : ''} />
+          <span>คำขอยืมและอนุมัติ</span>
+          {#if pendingRequests.length + pendingPickupRequests.length > 0}
+            <span class="rounded-full px-2 py-0.5 text-[11px] font-bold {activeMainTab === 'requests' ? 'bg-sage text-white' : 'bg-white text-sage'}">
+              {pendingRequests.length + pendingPickupRequests.length}
+            </span>
+          {/if}
+        </button>
+
+        {#if isAdmin($user) || getUserType($user) === 'superadmin'}
+          <button
+            type="button"
+            class="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold transition-all active:scale-[0.98] {activeMainTab === 'items' ? 'bg-white text-ink shadow-xs' : 'text-[#667168] hover:text-ink'}"
+            on:click={() => (activeMainTab = 'items')}
+          >
+            <Package size={16} class={activeMainTab === 'items' ? 'text-sage' : ''} />
+            <span>จัดการของยืม</span>
+            <span class="rounded-full px-2 py-0.5 text-[11px] font-bold {activeMainTab === 'items' ? 'bg-sage/15 text-sage' : 'bg-white text-[#667168]'}">
+              {$items.length}
+            </span>
+          </button>
+        {/if}
+      </div>
+
+      <div class="flex flex-wrap items-center gap-3 text-xs text-[#737d75]">
+        <span>รออนุมัติ <b class="text-blue-700">{pendingRequests.length}</b></span>
+        <span>·</span>
+        <span>รอนัดรับ <b class="text-indigo-700">{pendingPickupRequests.length}</b></span>
+        <span>·</span>
+        <span>กำลังยืม <b class="text-emerald-700">{approvedRequests.length}</b></span>
+      </div>
+    </div>
+  </section>
 
   {#if returnError}
-    <div class="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-semibold text-rose-800">
+    <div transition:slide={{ duration: 180 }} class="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-semibold text-rose-800">
       {returnError}
     </div>
   {/if}
-
-  <!-- Main Navigation Tabs (Top Operational Area) -->
-  <div class="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-[#e4e5de] pb-4">
-    <div class="flex gap-2 sm:gap-3">
-      <button
-        type="button"
-        class="flex items-center gap-2.5 rounded-xl px-5 py-2.5 text-sm font-bold transition {activeMainTab === 'requests' ? 'bg-sage text-white shadow-sm ring-2 ring-sage/20' : 'bg-white text-[#68726b] border border-[#e4e5de] hover:bg-[#f3f6f3]'}"
-        on:click={() => (activeMainTab = 'requests')}
-      >
-        <Clock3 size={17} />
-        <span>คำขอยืมและอนุมัติ</span>
-        {#if pendingRequests.length > 0}
-          <span class="rounded-full bg-white/30 px-2 py-0.5 text-xs font-bold text-white">
-            {pendingRequests.length}
-          </span>
-        {/if}
-      </button>
-
-      {#if isAdmin($user) || getUserType($user) === 'superadmin'}
-        <button
-          type="button"
-          class="flex items-center gap-2.5 rounded-xl px-5 py-2.5 text-sm font-bold transition {activeMainTab === 'items' ? 'bg-sage text-white shadow-sm ring-2 ring-sage/20' : 'bg-white text-[#68726b] border border-[#e4e5de] hover:bg-[#f3f6f3]'}"
-          on:click={() => (activeMainTab = 'items')}
-        >
-          <Package size={17} />
-          <span>จัดการของยืม ({$items.length})</span>
-        </button>
-      {/if}
-    </div>
-  </div>
 
   <!-- TAB 1: LOAN REQUESTS & APPROVALS -->
   {#if activeMainTab === 'requests'}
@@ -716,7 +772,7 @@
 
           <!-- Inline Form for Approving with Text Note (MAC address) -->
           {#if approvingId === request.id}
-            <div class="mt-4 rounded-xl border border-[#cde0ce] bg-[#f7fbf7] p-4">
+            <div transition:slide={{ duration: 200 }} class="mt-4 rounded-xl border border-[#cde0ce] bg-[#f7fbf7] p-4">
               <label class="text-sm font-bold text-ink">
                 หมายเลข MAC Address (หากมีหลายเครื่อง ให้คั่นด้วยเครื่องหมายจุลภาค ,)
                 <textarea
@@ -740,7 +796,7 @@
 
           <!-- Inline Form for Rejecting with Reason -->
           {#if rejectingId === request.id}
-            <div class="mt-4 rounded-xl border border-[#f2cfc9] bg-[#fff8f6] p-4">
+            <div transition:slide={{ duration: 200 }} class="mt-4 rounded-xl border border-[#f2cfc9] bg-[#fff8f6] p-4">
               <label class="text-sm font-bold text-ink">
                 เหตุผลที่ไม่อนุมัติคำขอ
                 <textarea
@@ -767,144 +823,351 @@
     </div>
   {/if}
 
-  <!-- TAB 2: ITEMS MANAGEMENT -->
+  <!-- TAB 2: ITEMS MANAGEMENT (Redesigned Full-Width + Pop-up Modal) -->
   {#if activeMainTab === 'items' && (isAdmin($user) || getUserType($user) === 'superadmin')}
-    <div class="grid gap-8 lg:grid-cols-[380px_1fr]">
-      <form class="h-fit space-y-4 rounded-2xl border border-[#e4e5de] bg-white p-6 shadow-sm" on:submit|preventDefault={submitItem}>
-        <div class="flex items-center justify-between gap-3">
-          <h2 class="text-lg font-bold text-ink">{editingItemId ? 'แก้ไขข้อมูลของ' : 'เพิ่มของใหม่'}</h2>
-          {#if editingItemId}
-            <button type="button" class="text-xs font-semibold text-[#69736b] hover:text-ink" on:click={cancelEditItem}>ยกเลิก</button>
-          {/if}
+    <div class="space-y-5 animate-fade-in-up">
+      <!-- Modern Inventory Toolbar -->
+      <div class="flex flex-col gap-3 rounded-2xl border border-[#e4e7e2] bg-white p-4 shadow-2xs sm:flex-row sm:items-center sm:justify-between">
+        <div class="relative flex-1 max-w-md">
+          <Search size={16} class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8a948b]" />
+          <input
+            type="search"
+            bind:value={itemSearch}
+            placeholder="ค้นหาชื่ออุปกรณ์ หมวดหมู่ หรือสถานที่..."
+            class="w-full rounded-xl border border-[#dde3dd] bg-[#fafbf9] py-2 pl-10 pr-3 text-sm text-ink placeholder:text-[#96a097] focus:border-sage focus:bg-white focus:outline-none transition"
+          />
         </div>
-        <label>ชื่อของ<input bind:value={form.name} required placeholder="เช่น เต็นท์สนาม" /></label>
-        <label>หมวดหมู่<input bind:value={form.category} required /></label>
-        <label>รายละเอียด<textarea bind:value={form.description} rows="3"></textarea></label>
-        <label>URL รูปภาพ<input bind:value={form.image} placeholder="https://..." /></label>
-        <div class="grid grid-cols-2 gap-3">
-          <label>จำนวนทั้งหมด<input type="number" min="1" step="1" bind:value={form.total} required /></label>
-          <label>พร้อมให้ยืม<input type="number" min="0" step="1" bind:value={form.available} required /></label>
-        </div>
-        <label>สถานที่จัดเก็บ<input bind:value={form.location} placeholder="เช่น ห้อง 301" /></label>
-        <label class="flex items-center gap-2 cursor-pointer pt-1">
-          <input type="checkbox" bind:checked={form.is_active} class="h-4 w-4 rounded border-[#c4d6c5] text-[var(--accent-ink)] focus:ring-sage" />
-          <span class="text-sm font-semibold text-ink">เปิดให้ยืมในแคตตาล็อก (Active)</span>
-        </label>
-        {#if itemError}
-          <p class="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{itemError}</p>
-        {/if}
-        {#if itemSuccess}
-          <p class="rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-700">{itemSuccess}</p>
-        {/if}
-        <Button type="submit" disabled={saving}>
-          {#if saving}
-            กำลังบันทึก...
-          {:else if editingItemId}
-            <Check size={17} />บันทึกการแก้ไข
-          {:else}
-            <Plus size={17} />เพิ่มรายการ
-          {/if}
-        </Button>
-      </form>
 
-      <div class="space-y-3">
-        <!-- Item Filter Tabs -->
-        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-[#e4e5de] pb-3">
-          <div class="flex gap-1.5">
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="inline-flex rounded-xl bg-[#f2f4f0] p-1 gap-1">
             <button
               type="button"
-              class="rounded-lg px-3 py-1 text-xs font-bold transition {itemFilter === 'all' ? 'bg-[#3b453e] text-white shadow-xs' : 'bg-[#f0f4ef] text-[#5e6960] hover:bg-[#e4ede3]'}"
+              class="rounded-lg px-3 py-1.5 text-xs font-bold transition active:scale-[0.97] {itemFilter === 'all' ? 'bg-white text-ink shadow-xs' : 'text-[#5e6960] hover:text-ink'}"
               on:click={() => (itemFilter = 'all')}
             >
               ทั้งหมด ({$items.length})
             </button>
             <button
               type="button"
-              class="rounded-lg px-3 py-1 text-xs font-bold transition {itemFilter === 'active' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-[#f0f4ef] text-[#5e6960] hover:bg-[#e4ede3]'}"
+              class="rounded-lg px-3 py-1.5 text-xs font-bold transition active:scale-[0.97] {itemFilter === 'active' ? 'bg-emerald-600 text-white shadow-xs' : 'text-[#5e6960] hover:text-ink'}"
               on:click={() => (itemFilter = 'active')}
             >
               เปิดให้ยืม ({$items.filter((i) => i.is_active !== false).length})
             </button>
             <button
               type="button"
-              class="rounded-lg px-3 py-1 text-xs font-bold transition {itemFilter === 'archived' ? 'bg-amber-700 text-white shadow-xs' : 'bg-[#f0f4ef] text-[#5e6960] hover:bg-[#e4ede3]'}"
+              class="rounded-lg px-3 py-1.5 text-xs font-bold transition active:scale-[0.97] {itemFilter === 'archived' ? 'bg-amber-600 text-white shadow-xs' : 'text-[#5e6960] hover:text-ink'}"
               on:click={() => (itemFilter = 'archived')}
             >
-              ยกเลิกใช้งานแล้ว ({$items.filter((i) => i.is_active === false).length})
+              ซ่อนแล้ว ({$items.filter((i) => i.is_active === false).length})
             </button>
           </div>
+
+          <button
+            type="button"
+            class="inline-flex items-center gap-1.5 rounded-xl bg-sage px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:brightness-110 active:scale-[0.97] transition"
+            on:click={openAddItemModal}
+          >
+            <Plus size={15} /> เพิ่มอุปกรณ์
+          </button>
         </div>
+      </div>
 
-        {#if displayedItems.length === 0}
-          <div class="rounded-2xl border border-dashed border-[#d8d8d0] py-16 text-center text-[#7c857e]">
-            {itemFilter === 'archived' ? 'ไม่มีรายการอุปกรณ์ที่ยกเลิกใช้งาน' : 'ยังไม่มีของในระบบ เพิ่มรายการแรกจากฟอร์มนี้ได้เลย'}
+      {#if displayedItems.length === 0}
+        <div class="rounded-2xl border border-dashed border-[#d8d8d0] bg-white py-16 text-center text-[#7c857e]">
+          <div class="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-2xl bg-[#eef3ed] text-sage">
+            <Package size={22} />
           </div>
-        {/if}
-        {#each displayedItems as item}
-          <div class="flex items-center gap-4 rounded-2xl border border-[#e4e5de] bg-white p-4 shadow-sm {item.is_active === false ? 'bg-amber-50/40 border-amber-200/60 opacity-80' : ''}">
-            <img src={item.image} alt="" class="h-16 w-16 rounded-xl object-cover" />
-            <div class="min-w-0 flex-1">
-              <div class="flex items-center gap-2">
-                <h3 class="font-bold text-ink {item.is_active === false ? 'line-through text-gray-500' : ''}">{item.name}</h3>
-                {#if item.is_active === false}
-                  <span class="inline-flex items-center rounded-md bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
-                    ยกเลิกใช้งาน (ซ่อน)
-                  </span>
-                {/if}
-              </div>
-              <p class="mt-1 text-xs text-[#7c857e]">{item.category} · ว่าง {item.available}/{item.total} ชิ้น · {item.location || 'ไม่ระบุสถานที่'}</p>
-              {#if Number(item.available) > Number(item.total)}
-                <p class="mt-1 text-xs font-bold text-rose-700">ข้อมูลไม่ถูกต้อง: จำนวนว่างมากกว่าจำนวนทั้งหมด กรุณาแก้ไขรายการนี้</p>
-              {/if}
-            </div>
-
-            <!-- Soft delete / Restore toggle button -->
-            {#if item.is_active === false}
-              <button
-                type="button"
-                class="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 transition"
-                title="นำกลับมาเปิดให้ยืมอีกครั้ง"
-                disabled={deletingId === item.id}
-                on:click={() => toggleItemStatus(item, true)}
-              >
-                <RotateCcw size={14} /> เปิดใช้งาน
-              </button>
-            {:else}
-              <button
-                type="button"
-                class="inline-flex items-center gap-1 rounded-lg border border-[#c8d4c9] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#576459] hover:bg-[#f0f4ef] transition"
-                title="ซ่อนออกจากแคตตาล็อก (ไม่ให้ยืมต่อ)"
-                disabled={deletingId === item.id}
-                on:click={() => toggleItemStatus(item, false)}
-              >
-                ซ่อน/เลิกใช้
-              </button>
-            {/if}
-
-            {#if isAdmin($user) || getUserType($user) === 'superadmin'}
-              <button
-                type="button"
-                class="icon-btn text-[var(--accent-ink)]"
-                aria-label="แก้ไข {item.name}"
-                title="แก้ไขข้อมูลของ"
-                on:click={() => startEditItem(item)}
-              >
-                <Pencil size={17} />
-              </button>
-            {/if}
+          <p class="font-bold text-ink">
+            {itemSearch.trim()
+              ? `ไม่พบอุปกรณ์ที่ตรงกับ "${itemSearch}"`
+              : itemFilter === 'archived'
+                ? 'ไม่มีรายการอุปกรณ์ที่ซ่อนไว้'
+                : 'ยังไม่มีอุปกรณ์ในระบบ'}
+          </p>
+          {#if !itemSearch.trim()}
             <button
               type="button"
-              class="icon-btn text-red-500 disabled:cursor-not-allowed disabled:opacity-50"
-              aria-label="ลบ {item.name}"
-              disabled={deletingId === item.id}
-              title="ลบรายการ"
-              on:click={() => removeItem(item)}
+              class="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-sage px-4 py-2 text-xs font-bold text-white hover:brightness-110 active:scale-[0.97] transition"
+              on:click={openAddItemModal}
             >
-              <Trash2 size={17} />
+              <Plus size={14} /> เพิ่มอุปกรณ์รายการแรก
             </button>
+          {/if}
+        </div>
+      {:else}
+        <div class="grid gap-4 md:grid-cols-2">
+          {#each displayedItems as item (item.id)}
+            {@const avail = Math.max(0, Number(item.available) || 0)}
+            {@const tot = Math.max(1, Number(item.total) || 1)}
+            {@const pct = Math.min(100, Math.round((avail / tot) * 100))}
+            <article
+              class="group flex flex-col justify-between gap-3 rounded-2xl border bg-white p-4 shadow-2xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md {item.is_active === false ? 'border-amber-200/80 bg-amber-50/30 opacity-85' : 'border-[#e4e7e2] hover:border-[#cfd8d0]'}"
+            >
+              <div class="flex items-start gap-4">
+                <div class="h-18 w-18 shrink-0 overflow-hidden rounded-xl border border-[#eaede8] bg-[#f7f8f5] p-1">
+                  {#if item.image}
+                    <img src={item.image} alt={item.name} class="h-full w-full object-contain transition-transform duration-200 group-hover:scale-105" loading="lazy" />
+                  {:else}
+                    <div class="grid h-full w-full place-items-center text-[#9ea89f]">
+                      <Package size={24} />
+                    </div>
+                  {/if}
+                </div>
+
+                <div class="min-w-0 flex-1">
+                  <div class="flex flex-wrap items-center gap-1.5">
+                    <span class="rounded-md bg-[#f1f5f1] px-2 py-0.5 text-[11px] font-semibold text-[#475d4c]">
+                      {item.category || 'ทั่วไป'}
+                    </span>
+                    {#if item.location}
+                      <span class="inline-flex items-center gap-0.5 text-[11px] text-[#7c857e]">
+                        <MapPin size={11} /> {item.location}
+                      </span>
+                    {/if}
+                    {#if item.is_active === false}
+                      <span class="inline-flex items-center rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800">
+                        ซ่อนอยู่
+                      </span>
+                    {/if}
+                  </div>
+
+                  <h3 class="mt-1 truncate text-base font-bold text-ink {item.is_active === false ? 'line-through text-gray-500' : ''}" title={item.name}>
+                    {item.name}
+                  </h3>
+
+                  {#if item.description}
+                    <p class="mt-0.5 line-clamp-1 text-xs text-[#7c857e]">{item.description}</p>
+                  {/if}
+
+                  <!-- Stock progress bar -->
+                  <div class="mt-2.5 flex items-center gap-2.5">
+                    <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-[#edf0ec]">
+                      <div
+                        class="h-full rounded-full transition-all duration-300 {avail === 0 ? 'bg-rose-500' : pct < 40 ? 'bg-amber-500' : 'bg-emerald-500'}"
+                        style="width: {pct}%"
+                      ></div>
+                    </div>
+                    <span class="font-mono text-xs font-bold tabular-nums {avail === 0 ? 'text-rose-600' : 'text-emerald-700'}">
+                      ว่าง {item.available}/{item.total}
+                    </span>
+                  </div>
+
+                  {#if Number(item.available) > Number(item.total)}
+                    <p class="mt-1 text-[11px] font-bold text-rose-700">ข้อมูลไม่ถูกต้อง: จำนวนว่างมากกว่าจำนวนทั้งหมด</p>
+                  {/if}
+                </div>
+              </div>
+
+              <!-- Card Action Footer -->
+              <div class="flex items-center justify-end gap-2 border-t border-[#f0f2ee] pt-3">
+                {#if item.is_active === false}
+                  <button
+                    type="button"
+                    class="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 active:scale-[0.97] transition"
+                    disabled={deletingId === item.id}
+                    on:click={() => toggleItemStatus(item, true)}
+                  >
+                    <Eye size={14} /> เปิดใช้งาน
+                  </button>
+                {:else}
+                  <button
+                    type="button"
+                    class="inline-flex items-center gap-1.5 rounded-lg border border-[#d6ded6] bg-white px-3 py-1.5 text-xs font-semibold text-[#576459] hover:bg-[#f3f6f3] active:scale-[0.97] transition"
+                    disabled={deletingId === item.id}
+                    on:click={() => toggleItemStatus(item, false)}
+                  >
+                    <EyeOff size={14} /> ซ่อน/เลิกใช้
+                  </button>
+                {/if}
+
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50/70 px-3 py-1.5 text-xs font-bold text-[var(--accent-ink)] hover:bg-blue-100/70 active:scale-[0.97] transition"
+                  aria-label="แก้ไข {item.name}"
+                  on:click={() => startEditItem(item)}
+                >
+                  <Pencil size={14} /> แก้ไข
+                </button>
+
+                <button
+                  type="button"
+                  class="icon-btn text-rose-500 hover:bg-rose-50 hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label="ลบ {item.name}"
+                  disabled={deletingId === item.id}
+                  title="ลบรายการ"
+                  on:click={() => removeItem(item)}
+                >
+                  <Trash2 size={15} />
+                </button>
+              </div>
+            </article>
+          {/each}
+        </div>
+      {/if}
+    </div>
+  {/if}
+
+  <!-- POP-UP MODAL: ADD / EDIT ITEM -->
+  {#if showItemModal}
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={editingItemId ? 'แก้ไขข้อมูลอุปกรณ์' : 'เพิ่มอุปกรณ์ใหม่'}
+      class="fixed inset-0 z-[90] flex items-center justify-center p-4"
+    >
+      <button
+        type="button"
+        transition:fade={{ duration: 160 }}
+        class="fixed inset-0 cursor-default bg-ink/35 backdrop-blur-[2px]"
+        aria-label="ปิดหน้าต่างแก้ไขข้อมูลของ"
+        on:click={cancelEditItem}
+      ></button>
+
+      <form
+        transition:scale={{ start: 0.94, duration: 200 }}
+        class="relative z-[95] flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-[#dfe4de] bg-white shadow-2xl"
+        on:submit|preventDefault={submitItem}
+      >
+        <div class="flex items-center justify-between border-b border-[#ecefe9] bg-[#fafbf9] px-6 py-4">
+          <div>
+            <p class="text-[11px] font-bold uppercase tracking-wider text-sage">
+              {editingItemId ? 'EDIT INVENTORY ITEM' : 'NEW INVENTORY ITEM'}
+            </p>
+            <h2 class="mt-0.5 text-lg font-bold text-ink">
+              {editingItemId ? 'แก้ไขข้อมูลอุปกรณ์' : 'เพิ่มอุปกรณ์ใหม่'}
+            </h2>
           </div>
-        {/each}
-      </div>
+          <button type="button" class="icon-btn" aria-label="ปิด" on:click={cancelEditItem}>
+            <X size={18} />
+          </button>
+        </div>
+
+        <div class="flex-1 space-y-4 overflow-y-auto px-6 py-5">
+          <!-- Live Image Preview + URL -->
+          <div class="flex items-center gap-4 rounded-xl border border-[#e7ebe6] bg-[#fafbf9] p-3">
+            <div class="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-[#e2e7e2] bg-white p-1">
+              {#if form.image}
+                <img src={form.image} alt="ตัวอย่างรูปภาพ" class="h-full w-full object-contain" />
+              {:else}
+                <div class="grid h-full w-full place-items-center text-[#9fa9a0]">
+                  <Package size={22} />
+                </div>
+              {/if}
+            </div>
+            <label class="min-w-0 flex-1 text-xs font-bold text-ink">
+              URL รูปภาพ
+              <input
+                bind:value={form.image}
+                placeholder="https://..."
+                class="mt-1 w-full rounded-lg border border-[#d2dcd3] bg-white px-3 py-2 text-xs font-normal"
+              />
+            </label>
+          </div>
+
+          <label class="block text-xs font-bold text-ink">
+            ชื่ออุปกรณ์ <span class="text-rose-500">*</span>
+            <input
+              bind:value={form.name}
+              required
+              placeholder="เช่น สาย HDMI 10 เมตร"
+              class="mt-1 w-full rounded-lg border border-[#d2dcd3] bg-white px-3 py-2.5 text-sm font-normal"
+            />
+          </label>
+
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <label class="block text-xs font-bold text-ink">
+              หมวดหมู่ <span class="text-rose-500">*</span>
+              <input
+                bind:value={form.category}
+                required
+                class="mt-1 w-full rounded-lg border border-[#d2dcd3] bg-white px-3 py-2 text-sm font-normal"
+              />
+            </label>
+            <label class="block text-xs font-bold text-ink">
+              สถานที่จัดเก็บ
+              <input
+                bind:value={form.location}
+                placeholder="เช่น 713"
+                class="mt-1 w-full rounded-lg border border-[#d2dcd3] bg-white px-3 py-2 text-sm font-normal"
+              />
+            </label>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <label class="block text-xs font-bold text-ink">
+              จำนวนทั้งหมด <span class="text-rose-500">*</span>
+              <input
+                type="number"
+                min="1"
+                step="1"
+                bind:value={form.total}
+                required
+                class="mt-1 w-full rounded-lg border border-[#d2dcd3] bg-white px-3 py-2 text-sm font-mono font-normal"
+              />
+            </label>
+            <label class="block text-xs font-bold text-ink">
+              พร้อมให้ยืม <span class="text-rose-500">*</span>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                bind:value={form.available}
+                required
+                class="mt-1 w-full rounded-lg border border-[#d2dcd3] bg-white px-3 py-2 text-sm font-mono font-normal"
+              />
+            </label>
+          </div>
+
+          <label class="block text-xs font-bold text-ink">
+            รายละเอียดเพิ่มเติม
+            <textarea
+              bind:value={form.description}
+              rows="3"
+              placeholder="ระบุรายละเอียดสเปกหรือหมายเหตุอุปกรณ์"
+              class="mt-1 w-full rounded-lg border border-[#d2dcd3] bg-white px-3 py-2 text-sm font-normal"
+            ></textarea>
+          </label>
+
+          <label class="flex items-center gap-2.5 rounded-xl border border-[#e4eae4] bg-[#f7faf7] px-3.5 py-2.5 cursor-pointer">
+            <input
+              type="checkbox"
+              bind:checked={form.is_active}
+              class="h-4 w-4 rounded border-[#c4d6c5] text-sage focus:ring-sage"
+            />
+            <span class="text-sm font-semibold text-ink">เปิดให้ยืมในแคตตาล็อก (Active)</span>
+          </label>
+
+          {#if itemError}
+            <p transition:slide={{ duration: 160 }} class="rounded-lg bg-rose-50 border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-700">
+              {itemError}
+            </p>
+          {/if}
+        </div>
+
+        <div class="flex items-center justify-end gap-2.5 border-t border-[#ecefe9] bg-[#fafbf9] px-6 py-4">
+          <button
+            type="button"
+            class="rounded-xl border border-[#d4ddd4] bg-white px-4 py-2 text-sm font-semibold text-[#5a665c] hover:bg-[#f2f5f2] active:scale-[0.97] transition"
+            on:click={cancelEditItem}
+          >
+            ยกเลิก
+          </button>
+          <button
+            type="submit"
+            disabled={saving}
+            class="inline-flex items-center gap-2 rounded-xl bg-sage px-5 py-2 text-sm font-bold text-white shadow-sm hover:brightness-110 active:scale-[0.97] disabled:opacity-60 transition"
+          >
+            {#if saving}
+              กำลังบันทึก...
+            {:else if editingItemId}
+              <Check size={16} /> บันทึกการแก้ไข
+            {:else}
+              <Plus size={16} /> เพิ่มรายการ
+            {/if}
+          </button>
+        </div>
+      </form>
     </div>
   {/if}
 

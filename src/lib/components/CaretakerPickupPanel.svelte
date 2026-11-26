@@ -1,4 +1,5 @@
 <script>
+  import { slide } from 'svelte/transition';
   import { CalendarClock, Check, MapPin, PackageCheck, RefreshCw } from '@lucide/svelte';
   import Button from './Button.svelte';
   import {
@@ -123,7 +124,7 @@
       </div>
 
       {#if showRescheduleForm && canManage}
-        <div class="mt-2.5 rounded-lg border border-amber-200 bg-amber-50/80 p-3">
+        <div transition:slide={{ duration: 200 }} class="mt-2.5 rounded-lg border border-amber-200 bg-amber-50/80 p-3">
           <label class="block text-xs font-bold text-amber-950">
             ระบุเหตุผลหรือช่วงเวลาที่สะดวกให้ผู้ยืมเลือกใหม่ <span class="text-rose-500">*</span>
             <textarea

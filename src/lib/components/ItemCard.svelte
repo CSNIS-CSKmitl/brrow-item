@@ -11,13 +11,18 @@
   $: displayTotal = Math.max(0, Number(item?.total) || 0, displayAvailable);
 </script>
 
-<article class="group flex flex-col justify-between overflow-hidden rounded-xl border border-[#e8e5df] bg-white transition-colors duration-150 hover:border-[#cbcfcb]">
+<article class="group flex flex-col justify-between overflow-hidden rounded-xl border bg-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md {selected ? 'border-blue-400/70 ring-2 ring-blue-500/15 shadow-xs' : 'border-[#e8e5df] hover:border-[#cbcfcb]'}">
   <button class="block w-full text-left" on:click={onOpen} aria-label="ดูรายละเอียด {item.name}">
     <div class="relative h-48 overflow-hidden bg-[#f6f7f4]">
-      <img src={item.image} alt={item.name} class="h-full w-full object-contain p-2 transition-transform duration-200 group-hover:scale-[1.03]" />
+      <img src={item.image} alt={item.name} class="h-full w-full object-contain p-2 transition-transform duration-300 ease-out group-hover:scale-[1.05]" />
       <span class="absolute left-2.5 top-2.5 rounded-md border border-white/60 bg-white/95 px-2 py-0.5 font-mono text-[11px] text-[#4a6354]">
         {item.category}
       </span>
+      {#if selected}
+        <span class="animate-badge-pop absolute right-2.5 top-2.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-[var(--accent)] text-white shadow-sm">
+          <Check size={13} strokeWidth={2.5} />
+        </span>
+      {/if}
       {#if displayAvailable === 0}
         <div class="absolute inset-0 flex items-center justify-center bg-[#17211b]/40 ">
           <span class="rounded-md bg-white px-2.5 py-1 text-xs font-medium text-[var(--text)]">
@@ -52,13 +57,17 @@
         disabled={displayAvailable === 0}
         on:click={() => onSelect(item)}
       >
-        {#if selected}
-          <Check size={14} strokeWidth={1.5} />
-          <span>เพิ่มแล้วในรายการ</span>
-        {:else}
-          <Plus size={14} strokeWidth={1.5} />
-          <span>เพิ่มในรายการยืม</span>
-        {/if}
+        {#key selected}
+          {#if selected}
+            <span class="animate-check-pop inline-flex items-center">
+              <Check size={14} strokeWidth={2} />
+            </span>
+            <span>เพิ่มแล้วในรายการ</span>
+          {:else}
+            <Plus size={14} strokeWidth={1.75} />
+            <span>เพิ่มในรายการยืม</span>
+          {/if}
+        {/key}
       </Button>
     </div>
   </div>
