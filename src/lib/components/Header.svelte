@@ -28,8 +28,12 @@
   let profileContainer = null;
 
   // Keep the current path as an explicit argument so Svelte invalidates these
-  // class expressions after client-side navigation.
-  const activeClass = (target, current) => (current === target ? 'text-ink font-bold' : 'text-[#68726b] hover:text-ink');
+  // class expressions after client-side navigation. Use uniform font-weight so
+  // switching tabs never shifts nav link widths.
+  const activeClass = (target, current) =>
+    current === target
+      ? 'bg-[#edf2ec] text-ink'
+      : 'text-[#68726b] hover:bg-[#f3f5f1] hover:text-ink';
 
   function roleTitle(type) {
     if (type === 'head') return 'หัวหน้าภาค (Head)';
@@ -89,14 +93,14 @@
         <span class="text-xl font-bold tracking-tight text-ink">borrowly<span class="text-clay">.</span></span>
       </a>
 
-      <nav class="hidden items-center gap-8 text-sm font-medium md:flex">
-        <a class="transition-colors {activeClass('/catalog', path)}" href="/catalog">แคตตาล็อก</a>
-        <a class="transition-colors {activeClass('/requests', path)}" href="/requests">คำขอยืม</a>
+      <nav class="hidden items-center gap-1.5 text-sm font-semibold md:flex">
+        <a class="rounded-lg px-3.5 py-1.5 transition-colors {activeClass('/catalog', path)}" href="/catalog">แคตตาล็อก</a>
+        <a class="rounded-lg px-3.5 py-1.5 transition-colors {activeClass('/requests', path)}" href="/requests">คำขอยืม</a>
         {#if canApprove}
-          <a class="transition-colors {activeClass('/approvals', path)}" href="/approvals">อนุมัติคำขอ</a>
+          <a class="rounded-lg px-3.5 py-1.5 transition-colors {activeClass('/approvals', path)}" href="/approvals">อนุมัติคำขอ</a>
         {/if}
         {#if canAdmin}
-          <a class="transition-colors {activeClass('/admin', path)}" href="/admin">แอดมิน</a>
+          <a class="rounded-lg px-3.5 py-1.5 transition-colors {activeClass('/admin', path)}" href="/admin">แอดมิน</a>
         {/if}
       </nav>
 
