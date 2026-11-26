@@ -1008,169 +1008,6 @@
     </div>
   {/if}
 
-  <!-- POP-UP MODAL: ADD / EDIT ITEM -->
-  {#if showItemModal}
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={editingItemId ? 'แก้ไขข้อมูลอุปกรณ์' : 'เพิ่มอุปกรณ์ใหม่'}
-      class="fixed inset-0 z-[90] flex items-center justify-center p-4"
-    >
-      <button
-        type="button"
-        transition:fade={{ duration: 160 }}
-        class="fixed inset-0 cursor-default bg-ink/35 backdrop-blur-[2px]"
-        aria-label="ปิดหน้าต่างแก้ไขข้อมูลของ"
-        on:click={cancelEditItem}
-      ></button>
-
-      <form
-        transition:scale={{ start: 0.94, duration: 200 }}
-        class="relative z-[95] flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-[#dfe4de] bg-white shadow-2xl"
-        on:submit|preventDefault={submitItem}
-      >
-        <div class="flex items-center justify-between border-b border-[#ecefe9] bg-[#fafbf9] px-6 py-4">
-          <div>
-            <p class="text-[11px] font-bold uppercase tracking-wider text-sage">
-              {editingItemId ? 'EDIT INVENTORY ITEM' : 'NEW INVENTORY ITEM'}
-            </p>
-            <h2 class="mt-0.5 text-lg font-bold text-ink">
-              {editingItemId ? 'แก้ไขข้อมูลอุปกรณ์' : 'เพิ่มอุปกรณ์ใหม่'}
-            </h2>
-          </div>
-          <button type="button" class="icon-btn" aria-label="ปิด" on:click={cancelEditItem}>
-            <X size={18} />
-          </button>
-        </div>
-
-        <div class="flex-1 space-y-4 overflow-y-auto px-6 py-5">
-          <!-- Live Image Preview + URL -->
-          <div class="flex items-center gap-4 rounded-xl border border-[#e7ebe6] bg-[#fafbf9] p-3">
-            <div class="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-[#e2e7e2] bg-white p-1">
-              {#if form.image}
-                <img src={form.image} alt="ตัวอย่างรูปภาพ" class="h-full w-full object-contain" />
-              {:else}
-                <div class="grid h-full w-full place-items-center text-[#9fa9a0]">
-                  <Package size={22} />
-                </div>
-              {/if}
-            </div>
-            <label class="min-w-0 flex-1 text-xs font-bold text-ink">
-              URL รูปภาพ
-              <input
-                bind:value={form.image}
-                placeholder="https://..."
-                class="mt-1 w-full rounded-lg border border-[#d2dcd3] bg-white px-3 py-2 text-xs font-normal"
-              />
-            </label>
-          </div>
-
-          <label class="block text-xs font-bold text-ink">
-            ชื่ออุปกรณ์ <span class="text-rose-500">*</span>
-            <input
-              bind:value={form.name}
-              required
-              placeholder="เช่น สาย HDMI 10 เมตร"
-              class="mt-1 w-full rounded-lg border border-[#d2dcd3] bg-white px-3 py-2.5 text-sm font-normal"
-            />
-          </label>
-
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label class="block text-xs font-bold text-ink">
-              หมวดหมู่ <span class="text-rose-500">*</span>
-              <input
-                bind:value={form.category}
-                required
-                class="mt-1 w-full rounded-lg border border-[#d2dcd3] bg-white px-3 py-2 text-sm font-normal"
-              />
-            </label>
-            <label class="block text-xs font-bold text-ink">
-              สถานที่จัดเก็บ
-              <input
-                bind:value={form.location}
-                placeholder="เช่น 713"
-                class="mt-1 w-full rounded-lg border border-[#d2dcd3] bg-white px-3 py-2 text-sm font-normal"
-              />
-            </label>
-          </div>
-
-          <div class="grid grid-cols-2 gap-3">
-            <label class="block text-xs font-bold text-ink">
-              จำนวนทั้งหมด <span class="text-rose-500">*</span>
-              <input
-                type="number"
-                min="1"
-                step="1"
-                bind:value={form.total}
-                required
-                class="mt-1 w-full rounded-lg border border-[#d2dcd3] bg-white px-3 py-2 text-sm font-mono font-normal"
-              />
-            </label>
-            <label class="block text-xs font-bold text-ink">
-              พร้อมให้ยืม <span class="text-rose-500">*</span>
-              <input
-                type="number"
-                min="0"
-                step="1"
-                bind:value={form.available}
-                required
-                class="mt-1 w-full rounded-lg border border-[#d2dcd3] bg-white px-3 py-2 text-sm font-mono font-normal"
-              />
-            </label>
-          </div>
-
-          <label class="block text-xs font-bold text-ink">
-            รายละเอียดเพิ่มเติม
-            <textarea
-              bind:value={form.description}
-              rows="3"
-              placeholder="ระบุรายละเอียดสเปกหรือหมายเหตุอุปกรณ์"
-              class="mt-1 w-full rounded-lg border border-[#d2dcd3] bg-white px-3 py-2 text-sm font-normal"
-            ></textarea>
-          </label>
-
-          <label class="flex items-center gap-2.5 rounded-xl border border-[#e4eae4] bg-[#f7faf7] px-3.5 py-2.5 cursor-pointer">
-            <input
-              type="checkbox"
-              bind:checked={form.is_active}
-              class="h-4 w-4 rounded border-[#c4d6c5] text-sage focus:ring-sage"
-            />
-            <span class="text-sm font-semibold text-ink">เปิดให้ยืมในแคตตาล็อก (Active)</span>
-          </label>
-
-          {#if itemError}
-            <p transition:slide={{ duration: 160 }} class="rounded-lg bg-rose-50 border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-700">
-              {itemError}
-            </p>
-          {/if}
-        </div>
-
-        <div class="flex items-center justify-end gap-2.5 border-t border-[#ecefe9] bg-[#fafbf9] px-6 py-4">
-          <button
-            type="button"
-            class="rounded-xl border border-[#d4ddd4] bg-white px-4 py-2 text-sm font-semibold text-[#5a665c] hover:bg-[#f2f5f2] active:scale-[0.97] transition"
-            on:click={cancelEditItem}
-          >
-            ยกเลิก
-          </button>
-          <button
-            type="submit"
-            disabled={saving}
-            class="inline-flex items-center gap-2 rounded-xl bg-sage px-5 py-2 text-sm font-bold text-white shadow-sm hover:brightness-110 active:scale-[0.97] disabled:opacity-60 transition"
-          >
-            {#if saving}
-              กำลังบันทึก...
-            {:else if editingItemId}
-              <Check size={16} /> บันทึกการแก้ไข
-            {:else}
-              <Plus size={16} /> เพิ่มรายการ
-            {/if}
-          </button>
-        </div>
-      </form>
-    </div>
-  {/if}
-
   <!-- BOTTOM SECTION: Prominent Stats Dashboard (เอา stat ไปไว้ล่างด้วย ให้ใหญ่ๆ) -->
   <section class="mt-14 border-t border-[var(--border)] pt-8" aria-label="สถิติภาพรวมระบบ">
     <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
@@ -1196,3 +1033,166 @@
     />
   </section>
 </main>
+
+<!-- POP-UP MODAL: ADD / EDIT ITEM (outside main so position:fixed is always viewport-centered) -->
+{#if showItemModal}
+  <div
+    role="dialog"
+    aria-modal="true"
+    aria-label={editingItemId ? 'แก้ไขข้อมูลอุปกรณ์' : 'เพิ่มอุปกรณ์ใหม่'}
+    class="fixed inset-0 z-[90] flex items-center justify-center p-4"
+  >
+    <button
+      type="button"
+      transition:fade={{ duration: 160 }}
+      class="fixed inset-0 cursor-default bg-ink/40 backdrop-blur-[2px]"
+      aria-label="ปิดหน้าต่างแก้ไขข้อมูลของ"
+      on:click={cancelEditItem}
+    ></button>
+
+    <form
+      transition:scale={{ start: 0.94, duration: 200 }}
+      class="relative z-[95] flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-[#dfe4de] bg-white shadow-2xl"
+      on:submit|preventDefault={submitItem}
+    >
+      <div class="flex items-center justify-between border-b border-[#ecefe9] bg-[#fafbf9] px-6 py-4">
+        <div>
+          <p class="text-[11px] font-bold uppercase tracking-wider text-sage">
+            {editingItemId ? 'EDIT INVENTORY ITEM' : 'NEW INVENTORY ITEM'}
+          </p>
+          <h2 class="mt-0.5 text-lg font-bold text-ink">
+            {editingItemId ? 'แก้ไขข้อมูลอุปกรณ์' : 'เพิ่มอุปกรณ์ใหม่'}
+          </h2>
+        </div>
+        <button type="button" class="icon-btn" aria-label="ปิด" on:click={cancelEditItem}>
+          <X size={18} />
+        </button>
+      </div>
+
+      <div class="flex-1 space-y-4 overflow-y-auto px-6 py-5">
+        <!-- Live Image Preview + URL -->
+        <div class="flex items-center gap-4 rounded-xl border border-[#e7ebe6] bg-[#fafbf9] p-3">
+          <div class="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-[#e2e7e2] bg-white p-1">
+            {#if form.image}
+              <img src={form.image} alt="ตัวอย่างรูปภาพ" class="h-full w-full object-contain" />
+            {:else}
+              <div class="grid h-full w-full place-items-center text-[#9fa9a0]">
+                <Package size={22} />
+              </div>
+            {/if}
+          </div>
+          <label class="min-w-0 flex-1 text-xs font-bold text-ink">
+            URL รูปภาพ
+            <input
+              bind:value={form.image}
+              placeholder="https://..."
+              class="mt-1 w-full rounded-lg border border-[#d2dcd3] bg-white px-3 py-2 text-xs font-normal"
+            />
+          </label>
+        </div>
+
+        <label class="block text-xs font-bold text-ink">
+          ชื่ออุปกรณ์ <span class="text-rose-500">*</span>
+          <input
+            bind:value={form.name}
+            required
+            placeholder="เช่น สาย HDMI 10 เมตร"
+            class="mt-1 w-full rounded-lg border border-[#d2dcd3] bg-white px-3 py-2.5 text-sm font-normal"
+          />
+        </label>
+
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <label class="block text-xs font-bold text-ink">
+            หมวดหมู่ <span class="text-rose-500">*</span>
+            <input
+              bind:value={form.category}
+              required
+              class="mt-1 w-full rounded-lg border border-[#d2dcd3] bg-white px-3 py-2 text-sm font-normal"
+            />
+          </label>
+          <label class="block text-xs font-bold text-ink">
+            สถานที่จัดเก็บ
+            <input
+              bind:value={form.location}
+              placeholder="เช่น 713"
+              class="mt-1 w-full rounded-lg border border-[#d2dcd3] bg-white px-3 py-2 text-sm font-normal"
+            />
+          </label>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <label class="block text-xs font-bold text-ink">
+            จำนวนทั้งหมด <span class="text-rose-500">*</span>
+            <input
+              type="number"
+              min="1"
+              step="1"
+              bind:value={form.total}
+              required
+              class="mt-1 w-full rounded-lg border border-[#d2dcd3] bg-white px-3 py-2 text-sm font-mono font-normal"
+            />
+          </label>
+          <label class="block text-xs font-bold text-ink">
+            พร้อมให้ยืม <span class="text-rose-500">*</span>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              bind:value={form.available}
+              required
+              class="mt-1 w-full rounded-lg border border-[#d2dcd3] bg-white px-3 py-2 text-sm font-mono font-normal"
+            />
+          </label>
+        </div>
+
+        <label class="block text-xs font-bold text-ink">
+          รายละเอียดเพิ่มเติม
+          <textarea
+            bind:value={form.description}
+            rows="3"
+            placeholder="ระบุรายละเอียดสเปกหรือหมายเหตุอุปกรณ์"
+            class="mt-1 w-full rounded-lg border border-[#d2dcd3] bg-white px-3 py-2 text-sm font-normal"
+          ></textarea>
+        </label>
+
+        <label class="flex items-center gap-2.5 rounded-xl border border-[#e4eae4] bg-[#f7faf7] px-3.5 py-2.5 cursor-pointer">
+          <input
+            type="checkbox"
+            bind:checked={form.is_active}
+            class="h-4 w-4 rounded border-[#c4d6c5] text-sage focus:ring-sage"
+          />
+          <span class="text-sm font-semibold text-ink">เปิดให้ยืมในแคตตาล็อก (Active)</span>
+        </label>
+
+        {#if itemError}
+          <p transition:slide={{ duration: 160 }} class="rounded-lg bg-rose-50 border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-700">
+            {itemError}
+          </p>
+        {/if}
+      </div>
+
+      <div class="flex items-center justify-end gap-2.5 border-t border-[#ecefe9] bg-[#fafbf9] px-6 py-4">
+        <button
+          type="button"
+          class="rounded-xl border border-[#d4ddd4] bg-white px-4 py-2 text-sm font-semibold text-[#5a665c] hover:bg-[#f2f5f2] active:scale-[0.97] transition"
+          on:click={cancelEditItem}
+        >
+          ยกเลิก
+        </button>
+        <button
+          type="submit"
+          disabled={saving}
+          class="inline-flex items-center gap-2 rounded-xl bg-sage px-5 py-2 text-sm font-bold text-white shadow-sm hover:brightness-110 active:scale-[0.97] disabled:opacity-60 transition"
+        >
+          {#if saving}
+            กำลังบันทึก...
+          {:else if editingItemId}
+            <Check size={16} /> บันทึกการแก้ไข
+          {:else}
+            <Plus size={16} /> เพิ่มรายการ
+          {/if}
+        </button>
+      </div>
+    </form>
+  </div>
+{/if}

@@ -404,7 +404,7 @@ label textarea {
   }
   100% {
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
   }
 }
 
@@ -417,7 +417,7 @@ label textarea {
 }
 
 .animate-fade-in-up {
-  animation: fadeInUp 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation: fadeInUp 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 @media (prefers-reduced-motion: reduce) {
