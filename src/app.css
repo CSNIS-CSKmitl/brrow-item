@@ -329,34 +329,36 @@ button {
   background: transparent;
   font-size: 18px;
 }
-label {
-  display: block;
-  color: var(--text-secondary);
-  font-size: 12px;
-  font-weight: 500;
-}
-label input,
-label textarea,
-label select {
-  display: block;
-  width: 100%;
-  margin-top: 8px;
-  padding: 10px 12px;
-  color: var(--text);
-  outline: none;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
-  font-size: 13px;
-  font-weight: 400;
-}
-label input:focus,
-label textarea:focus,
-label select:focus {
-  border-color: var(--accent);
-}
-label textarea {
-  resize: vertical;
+@layer base {
+  label {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 500;
+  }
+  label input,
+  label textarea,
+  label select {
+    display: block;
+    width: 100%;
+    margin-top: 8px;
+    padding: 10px 12px;
+    color: var(--text);
+    outline: none;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    font-size: 13px;
+    font-weight: 400;
+  }
+  label input:focus,
+  label textarea:focus,
+  label select:focus {
+    border-color: var(--accent);
+  }
+  label textarea {
+    resize: vertical;
+  }
 }
 @media (max-width: 640px) {
   .hero-art {

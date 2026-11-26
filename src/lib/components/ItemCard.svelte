@@ -1,11 +1,22 @@
 <script>
-  import { MapPin, Plus, Check } from '@lucide/svelte';
+  import { MapPin, Plus, Check, Package } from '@lucide/svelte';
   import Button from './Button.svelte';
   import { canAdmin } from '../stores.js';
   export let item;
   export let selected = false;
   export let onSelect = () => {};
   export let onOpen = () => {};
+
+  let imgLoaded = false;
+  let imgError = false;
+  let imgEl = null;
+
+  $: if (item?.image) {
+    if (imgEl && imgEl.complete && imgEl.naturalWidth > 0) {
+      imgLoaded = true;
+      imgError = false;
+    }
+  }
 
   $: displayAvailable = Math.max(0, Number(item?.available) || 0);
   $: displayTotal = Math.max(0, Number(item?.total) || 0, displayAvailable);
@@ -14,7 +25,25 @@
 <article class="group flex flex-col justify-between overflow-hidden rounded-xl border bg-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md {selected ? 'border-blue-400/70 ring-2 ring-blue-500/15 shadow-xs' : 'border-[#e8e5df] hover:border-[#cbcfcb]'}">
   <button class="block w-full text-left" on:click={onOpen} aria-label="ดูรายละเอียด {item.name}">
     <div class="relative h-48 overflow-hidden bg-[#f6f7f4]">
-      <img src={item.image} alt={item.name} class="h-full w-full object-contain p-2 transition-transform duration-300 ease-out group-hover:scale-[1.05]" />
+      {#if item?.image && !imgError}
+        {#if !imgLoaded}
+          <div class="absolute inset-0 animate-pulse bg-gradient-to-r from-[#eef1ec] via-[#e3e8e0] to-[#eef1ec]"></div>
+        {/if}
+        <img
+          bind:this={imgEl}
+          src={item.image}
+          alt={item.name}
+          loading="lazy"
+          decoding="async"
+          on:load={() => { imgLoaded = true; }}
+          on:error={() => { imgError = true; imgLoaded = true; }}
+          class="h-full w-full object-contain p-2 transition-all duration-300 ease-out group-hover:scale-[1.05] {imgLoaded ? 'opacity-100' : 'opacity-0'}"
+        />
+      {:else}
+        <div class="grid h-full w-full place-items-center text-[#a3ada4]">
+          <Package size={36} strokeWidth={1.4} />
+        </div>
+      {/if}
       <span class="absolute left-2.5 top-2.5 rounded-md border border-white/60 bg-white/95 px-2 py-0.5 font-mono text-[11px] text-[#4a6354]">
         {item.category}
       </span>

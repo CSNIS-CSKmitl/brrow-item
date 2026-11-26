@@ -108,9 +108,9 @@
 
         <label>
           วันและเวลาที่ต้องการคืน <span class="text-rose-500">*</span>
-          <div class="relative mt-1">
-            <CalendarDays class="pointer-events-none absolute left-3 top-3 text-[#8a918b]" size={17}/>
-            <input class="w-full rounded-lg border border-[#c4d6c5] bg-white py-2.5 pr-2.5 pl-10 text-sm" type="datetime-local" bind:value={dueDate} required />
+          <div class="relative mt-2">
+            <CalendarDays class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#8a918b]" size={17}/>
+            <input class="!mt-0 w-full rounded-lg border border-[#c4d6c5] bg-white py-2.5 pr-2.5 pl-10 text-sm" type="datetime-local" bind:value={dueDate} required />
           </div>
         </label>
 

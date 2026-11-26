@@ -67,9 +67,9 @@
     <form class="space-y-4" on:submit|preventDefault={handleSubmit}>
       <label>ชื่อผู้ใช้หรืออีเมล<input type="text" bind:value={identity} autocomplete="username" placeholder="ชื่อผู้ใช้หรืออีเมล" required /></label>
       <label>รหัสผ่าน
-        <div class="relative">
-          <LockKeyhole class="absolute left-3 top-3 text-[#8a918b]" size={16} />
-          <input class="pl-10" type="password" bind:value={password} placeholder="รหัสผ่าน" required />
+        <div class="relative mt-2">
+          <LockKeyhole class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#8a918b]" size={16} />
+          <input class="!mt-0 pl-10" type="password" bind:value={password} placeholder="รหัสผ่าน" required />
         </div>
       </label>
       {#if error}<p class="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{error}</p>{/if}
