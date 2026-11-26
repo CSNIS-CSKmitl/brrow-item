@@ -19,6 +19,7 @@
     teachers,
     userType,
     toastMessage,
+    toggleItem,
     submitLoan,
     handleLogout,
     stopRealtime,
@@ -83,6 +84,11 @@
       borrowerEmail={$user?.email || ''}
       bind:open={$panelOpen}
       onClose={() => ($panelOpen = false)}
+      onRemove={toggleItem}
+      onClearAll={() => {
+        selectedItems.set([]);
+        toastMessage.set({ type: 'success', text: 'ล้างรายการอุปกรณ์ที่เลือกทั้งหมดแล้ว' });
+      }}
       onSubmit={submitLoan}
     />
   {/if}

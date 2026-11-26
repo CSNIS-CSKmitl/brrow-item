@@ -1,13 +1,15 @@
 <script>
-  import { fade, fly } from 'svelte/transition';
+  import { fade, fly, slide } from 'svelte/transition';
   import { cubicOut } from 'svelte/easing';
-  import { ArrowRight, CalendarDays, Check, X } from '@lucide/svelte';
+  import { ArrowRight, CalendarDays, Check, Trash2, X } from '@lucide/svelte';
   import Button from './Button.svelte';
   import { canAdmin } from '../stores.js';
   export let selectedItems = [];
   export let open = false;
   export let onClose = () => {};
   export let onSubmit = () => {};
+  export let onRemove = () => {};
+  export let onClearAll = () => {};
   export let borrowerName = '';
   export let borrowerEmail = '';
   export let teachers = [];
@@ -51,25 +53,55 @@
       <button class="icon-btn" on:click={onClose}><X size={20}/></button>
     </div>
     <div class="flex-1 overflow-y-auto p-6">
-      <div class="space-y-3">
-        {#each selectedItems as item}
-          <div class="flex items-center gap-3 rounded-xl border border-[#e6e3dc] bg-white p-3">
-            <img src={item.image} alt={item.name} loading="lazy" decoding="async" class="h-12 w-12 rounded-lg object-cover"/>
-            <div class="min-w-0">
-              <p class="truncate text-sm font-bold text-ink">{item.name}</p>
-              <p class="text-xs text-[#818981]">{item.category}</p>
-            </div>
-            <div class="ml-auto flex items-center gap-2">
-              <button type="button" class="grid h-7 w-7 place-items-center rounded-md border bg-white" on:click={() => changeQuantity(item, (quantities[item.id] || 1) - 1)}>-</button>
-              <input class="h-7 w-12 rounded-md border text-center text-sm" type="number" min="1" max={Math.max(1, Number(item.available) || 1)} value={quantities[item.id] || 1} on:change={(event) => changeQuantity(item, event.currentTarget.value)} />
-              <button type="button" class="grid h-7 w-7 place-items-center rounded-md border bg-white" on:click={() => changeQuantity(item, (quantities[item.id] || 1) + 1)}>+</button>
-              {#if $canAdmin}
-                <span class="text-xs text-[#818981]">/ {Math.max(0, Number(item.available) || 0)}</span>
-              {/if}
-            </div>
+      {#if selectedItems.length === 0}
+        <div class="rounded-xl border border-dashed border-[#d8dcd6] bg-white py-10 text-center text-sm text-[#7d877e]">
+          ยังไม่มีรายการอุปกรณ์ที่เลือก
+        </div>
+      {:else}
+        {#if selectedItems.length > 1}
+          <div class="mb-2.5 flex items-center justify-between text-xs text-[#7c857e]">
+            <span>เลือกไว้ {selectedItems.length} รายการ</span>
+            <button
+              type="button"
+              class="inline-flex items-center gap-1 font-semibold text-rose-600 hover:text-rose-700 hover:underline transition"
+              on:click={onClearAll}
+            >
+              <Trash2 size={13} /> ล้างทั้งหมด
+            </button>
           </div>
-        {/each}
-      </div>
+        {/if}
+        <div class="space-y-3">
+          {#each selectedItems as item (item.id)}
+            <div
+              transition:slide={{ duration: 180 }}
+              class="flex items-center gap-3 rounded-xl border border-[#e6e3dc] bg-white p-3 transition hover:border-[#d2d7d0]"
+            >
+              <img src={item.image} alt={item.name} loading="lazy" decoding="async" class="h-12 w-12 shrink-0 rounded-lg border border-[#ecebe6] bg-[#f7f8f5] object-contain p-0.5"/>
+              <div class="min-w-0 flex-1">
+                <p class="truncate text-sm font-bold text-ink" title={item.name}>{item.name}</p>
+                <p class="text-xs text-[#818981]">{item.category}</p>
+              </div>
+              <div class="ml-auto flex shrink-0 items-center gap-1.5">
+                <button type="button" class="grid h-7 w-7 place-items-center rounded-md border border-[#d6ddd6] bg-white hover:bg-[#f3f6f3] active:scale-95 transition" on:click={() => changeQuantity(item, (quantities[item.id] || 1) - 1)}>-</button>
+                <input class="h-7 w-11 rounded-md border border-[#d6ddd6] text-center text-sm font-mono" type="number" min="1" max={Math.max(1, Number(item.available) || 1)} value={quantities[item.id] || 1} on:change={(event) => changeQuantity(item, event.currentTarget.value)} />
+                <button type="button" class="grid h-7 w-7 place-items-center rounded-md border border-[#d6ddd6] bg-white hover:bg-[#f3f6f3] active:scale-95 transition" on:click={() => changeQuantity(item, (quantities[item.id] || 1) + 1)}>+</button>
+                {#if $canAdmin}
+                  <span class="text-xs text-[#818981]">/ {Math.max(0, Number(item.available) || 0)}</span>
+                {/if}
+                <button
+                  type="button"
+                  class="ml-1 grid h-7 w-7 place-items-center rounded-md border border-rose-200 bg-rose-50/70 text-rose-600 hover:bg-rose-100 hover:text-rose-700 active:scale-95 transition"
+                  aria-label="ลบ {item.name} ออกจากรายการ"
+                  title="ลบออกจากรายการ"
+                  on:click={() => onRemove(item)}
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            </div>
+          {/each}
+        </div>
+      {/if}
       <div class="my-6 h-px bg-[#e7e5df]"></div>
       <div class="space-y-4">
         <div class="rounded-xl border border-[#e4e5de] bg-[#f5f7f3] px-4 py-3">
