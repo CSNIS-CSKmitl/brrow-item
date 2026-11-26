@@ -15,6 +15,10 @@ const ALLOWED_EVENTS = new Set([
   "approved",
   "rejected",
   "returned",
+  "pickup_proposed",
+  "pickup_confirmed",
+  "pickup_reschedule",
+  "picked_up",
 ]);
 
 export async function POST({ request, locals }) {
@@ -41,7 +45,11 @@ export async function POST({ request, locals }) {
     const isAssignedTeacher = record.teacher === locals.user.id;
     const isAdm = isBorrowlyAdmin(locals.user);
 
-    if (event === "created" && !isRequester && !isAdm) {
+    if (
+      (event === "created" || event === "pickup_proposed") &&
+      !isRequester &&
+      !isAdm
+    ) {
       return json({ error: "forbidden" }, { status: 403 });
     }
     if (event === "teacher_approved" && !isAssignedTeacher && !isAdm) {
@@ -50,7 +58,14 @@ export async function POST({ request, locals }) {
     if (event === "rejected" && !isAssignedTeacher && !isAdm) {
       return json({ error: "forbidden" }, { status: 403 });
     }
-    if ((event === "approved" || event === "returned") && !isAdm) {
+    if (
+      (event === "approved" ||
+        event === "returned" ||
+        event === "pickup_confirmed" ||
+        event === "pickup_reschedule" ||
+        event === "picked_up") &&
+      !isAdm
+    ) {
       return json({ error: "forbidden" }, { status: 403 });
     }
 
@@ -60,6 +75,32 @@ export async function POST({ request, locals }) {
     if (
       (event === "approved" || event === "rejected" || event === "returned") &&
       record.status !== event
+    ) {
+      return json({ ok: true, sent: false }, { status: 409 });
+    }
+    if (
+      event === "pickup_proposed" &&
+      (record.status !== "approved" ||
+        record.pickup_status !== "pending_caretaker_confirm")
+    ) {
+      return json({ ok: true, sent: false }, { status: 409 });
+    }
+    if (
+      event === "pickup_confirmed" &&
+      (record.status !== "approved" || record.pickup_status !== "confirmed")
+    ) {
+      return json({ ok: true, sent: false }, { status: 409 });
+    }
+    if (
+      event === "pickup_reschedule" &&
+      (record.status !== "approved" ||
+        record.pickup_status !== "reschedule_requested")
+    ) {
+      return json({ ok: true, sent: false }, { status: 409 });
+    }
+    if (
+      event === "picked_up" &&
+      (record.status !== "approved" || record.pickup_status !== "picked_up")
     ) {
       return json({ ok: true, sent: false }, { status: 409 });
     }
@@ -78,7 +119,11 @@ export async function POST({ request, locals }) {
     let approversSent = false;
     let recipientsCount = 0;
 
-    if (event === "created" || event === "teacher_approved") {
+    if (
+      event === "created" ||
+      event === "teacher_approved" ||
+      event === "pickup_proposed"
+    ) {
       const teacherEmail = record.expand?.teacher?.email || "";
       const recipients = await resolveLoanRecipients(pb, {
         event,

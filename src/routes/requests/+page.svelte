@@ -3,6 +3,8 @@
   import { Check, Download, Pencil, X } from '@lucide/svelte';
   import { items as mockItems } from '../../lib/mock-data.js';
   import Button from '../../lib/components/Button.svelte';
+  import LoanItemsList from '../../lib/components/LoanItemsList.svelte';
+  import BorrowerPickupPanel from '../../lib/components/BorrowerPickupPanel.svelte';
   import { items, teachers, userType } from '../../lib/stores.js';
   import { getMyLoanRequests, updateMyLoanRequest, cancelLoanRequest, pb } from '../../lib/pocketbase.js';
   import { exportSingleRequestToCSV, formatDateTime } from '../../lib/csv.js';
@@ -180,15 +182,7 @@
           </div>
 
           <div class="mt-4 rounded-xl bg-[#f5f7f3] p-4">
-            <div class="space-y-2">
-              {#each requestItems(request) as itemOrId}
-                <p class="flex items-center gap-2 text-sm font-semibold text-ink">
-                  <span class="h-2 w-2 rounded-full bg-sage"></span>
-                  {typeof itemOrId === 'object' && itemOrId?.name ? itemOrId.name : itemName(itemOrId)}
-                  <span class="text-xs font-normal text-[#89938b]">× {requestQuantity(request, itemOrId)}</span>
-                </p>
-              {/each}
-            </div>
+            <LoanItemsList {request} allItems={$items} />
             <p class="mt-3 text-sm text-[#778078]">อาจารย์ผู้รับทราบ: <b class="text-ink">{teacherName(request)}</b></p>
             <p class="mt-1 text-sm text-[#778078]">กำหนดเวลาคืน: <b class="text-ink">{formatDate(request.dueDate)}</b></p>
             {#if request.approvedAt}
@@ -208,6 +202,8 @@
               </div>
             {/if}
           </div>
+
+          <BorrowerPickupPanel {request} onUpdated={loadMyRequests} />
 
           {#if canEdit(request)}
             {#if editingId === request.id}

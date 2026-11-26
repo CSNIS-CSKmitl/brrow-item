@@ -10,6 +10,7 @@
   export let borrowerEmail = '';
   export let teachers = [];
   export let isTeacher = false;
+  export let userRole = '';
   let teacherId = '';
   let dueDate = '';
   let note = '';
@@ -65,8 +66,18 @@
 
         {#if isTeacher}
           <div class="rounded-xl border border-[#dce5dc] bg-[#eef5ee] px-4 py-3 text-sm text-[#2d5236]">
-            <b>บัญชีอาจารย์</b>
-            <p class="mt-1 text-xs text-[#527056]">คำขอจะส่งตรงถึงผู้ดูแลระบบ (Admin) เพื่อรอการอนุมัติ โดยไม่ต้องเลือกอาจารย์ผู้รับทราบ</p>
+            <b>
+              {#if userRole === 'head'}
+                บัญชีหัวหน้าสาขา (Head)
+              {:else if userRole === 'super_admin' || userRole === 'superadmin' || userRole === 'admin' || $canAdmin}
+                บัญชีผู้ดูแลระบบ (Admin)
+              {:else if userRole === 'staff'}
+                บัญชีเจ้าหน้าที่ / บุคลากร
+              {:else}
+                บัญชีอาจารย์
+              {/if}
+            </b>
+            <p class="mt-1 text-xs text-[#527056]">คำขอจะส่งตรงถึงผู้ดูแลระบบ (Caretaker / Superadmin) เพื่อรอการอนุมัติ โดยไม่ต้องเลือกอาจารย์ผู้รับทราบ</p>
           </div>
         {:else}
           <label>
@@ -77,7 +88,7 @@
                 <option value={teacher.id}>{teacher.name ? `${teacher.name}${teacher.email ? ` (${teacher.email})` : ''}` : (teacher.email || teacher.id)}</option>
               {/each}
             </select>
-            <p class="mt-1 text-xs text-[#7d877e]">คำขอจะถูกส่งให้อาจารย์กดรับทราบก่อน จึงจะส่งต่อให้ผู้ดูแลอนุมัติ</p>
+            <p class="mt-1 text-xs text-[#7d877e]">คำขอจะถูกส่งให้อาจารย์กดรับทราบก่อน จึงจะส่งต่อให้ผู้ดูแล (Caretaker) อนุมัติ</p>
           </label>
         {/if}
 
@@ -101,7 +112,7 @@
         disabled={selectedItems.length === 0 || !borrowerName || !borrowerEmail || (!isTeacher && !teacherId) || !dueDate}
         on:click={() => onSubmit({ dueDate, note, teacher: isTeacher ? '' : teacherId, quantities })}
       >
-        {isTeacher ? 'ส่งคำขอถึงผู้ดูแล' : 'ส่งคำขอยืม (ให้อาจารย์รับทราบ)'} <ArrowRight size={17}/>
+        {isTeacher ? 'ส่งคำขอถึงผู้ดูแล (รออนุมัติ)' : 'ส่งคำขอยืม (ให้อาจารย์รับทราบ)'} <ArrowRight size={17}/>
       </Button>
     </div>
   </div>

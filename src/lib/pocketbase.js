@@ -1,4 +1,9 @@
 import PocketBase from "pocketbase";
+import {
+  isValidPickupDate,
+  isValidPickupSlot,
+  buildPickupIsoTime,
+} from "./pickup.js";
 
 // Use the same-origin proxy in the browser, as the other production apps do.
 // This avoids CORS and keeps the PocketBase host private behind the web server.
@@ -205,9 +210,14 @@ export async function createLoanRequest({
 }) {
   const currentUser = pb.authStore.record;
   const currentUserType = getUserType(currentUser);
-  const isTeacherOrStaff =
-    currentUserType === "teachers" || currentUserType === "staff";
   const isAdm = isAdmin(currentUser);
+  const isDirectToCaretaker =
+    currentUserType === "teachers" ||
+    currentUserType === "staff" ||
+    currentUserType === "head" ||
+    currentUserType === "super_admin" ||
+    currentUserType === "admin" ||
+    isAdm;
 
   const request = {
     items: items || itemIds,
@@ -219,20 +229,13 @@ export async function createLoanRequest({
     dueDate,
     note,
     requester: currentUser?.id,
-    // ถ้า role เป็น อจ/staff ให้ส่งตรงไปรอ admin อนุมัติ (status: pending_caretaker)
-    // ถ้า role เป็น นักศึกษา ให้ส่งไปรอ อจ. รับทราบก่อน (status: pending_teacher)
-    teacher: isTeacherOrStaff || isAdm ? currentUser?.id : teacher,
-    status: isTeacherOrStaff
-      ? "pending_caretaker"
-      : isAdm
-        ? "approved"
-        : "pending_teacher",
+    // ถ้า role เป็น อาจารย์/บุคลากร/head/admin ไม่ต้องเลือกอาจารย์ผู้รับทราบ ให้ส่งตรงไปรอ caretaker (superadmin) อนุมัติ
+    // ถ้า role เป็น นักศึกษา ให้ส่งไปรอ อาจารย์รับทราบก่อน แล้วค่อยไปรอ caretaker อนุมัติ
+    teacher: isDirectToCaretaker ? currentUser?.id : teacher,
+    status: isDirectToCaretaker ? "pending_caretaker" : "pending_teacher",
   };
-  if (isAdm) {
-    request.caretaker = currentUser?.id;
-    request.approvedAt = new Date().toISOString();
-  }
 
+  // ทุก role ต้องรอ caretaker (superadmin) อนุมัติก่อนเสมอ ไม่มีการ auto-approve
   const created = await pb.collection("loan_requests").create(request);
   try {
     const itemArr = Array.isArray(request.items) ? request.items : [];
@@ -333,6 +336,7 @@ export async function updateLoanStatus(id, status, comment = "") {
     if (status === "approved") {
       if (trimmed) data.asset_tags = trimmed;
       data.approvedAt = new Date().toISOString();
+      data.pickup_status = "pending_user_select";
     } else if (status === "rejected") {
       if (trimmed) data.adminComment = trimmed;
       data.rejectedAt = new Date().toISOString();
@@ -497,6 +501,94 @@ export async function updateMyLoanRequest(
 
 export async function cancelLoanRequest(id) {
   return updateLoanStatus(id, "cancelled");
+}
+
+function triggerLoanNotify(id, event) {
+  fetch("/api/loans/notify", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id, event }),
+  }).catch(() => {});
+}
+
+export async function proposePickupTime(
+  id,
+  { pickupDate, pickupSlot, pickupNote = "" },
+) {
+  if (!isValidPickupDate(pickupDate)) {
+    throw new Error(
+      "กรุณาเลือกวันทำการ (จันทร์–ศุกร์) และต้องไม่ใช่วันที่ผ่านมาแล้ว",
+    );
+  }
+  if (!isValidPickupSlot(pickupSlot)) {
+    throw new Error("กรุณาเลือกช่วงเวลาที่อยู่ในเวลาราชการ (09:00–16:00 น.)");
+  }
+  const pickupTime = buildPickupIsoTime(pickupDate, pickupSlot);
+  const updated = await pb.collection("loan_requests").update(
+    id,
+    {
+      pickup_date: pickupDate,
+      pickup_slot: pickupSlot,
+      pickup_time: pickupTime,
+      pickup_note: String(pickupNote || "").trim(),
+      pickup_status: "pending_caretaker_confirm",
+    },
+    { expand: "requester,teacher,caretaker,items" },
+  );
+  triggerLoanNotify(id, "pickup_proposed");
+  return updated;
+}
+
+export async function confirmPickupTime(id) {
+  if (!isAdmin()) {
+    throw new Error("เฉพาะผู้ดูแลระบบเท่านั้นที่ยืนยันเวลานัดรับได้");
+  }
+  const updated = await pb.collection("loan_requests").update(
+    id,
+    {
+      pickup_status: "confirmed",
+      pickup_confirmed_at: new Date().toISOString(),
+    },
+    { expand: "requester,teacher,caretaker,items" },
+  );
+  triggerLoanNotify(id, "pickup_confirmed");
+  return updated;
+}
+
+export async function requestPickupReschedule(id, note = "") {
+  if (!isAdmin()) {
+    throw new Error("เฉพาะผู้ดูแลระบบเท่านั้นที่ขอเปลี่ยนเวลานัดรับได้");
+  }
+  const trimmed = String(note || "").trim();
+  if (!trimmed) {
+    throw new Error("กรุณาระบุเหตุผลหรือช่วงเวลาที่สะดวกให้ผู้ยืมทราบ");
+  }
+  const updated = await pb.collection("loan_requests").update(
+    id,
+    {
+      pickup_status: "reschedule_requested",
+      caretaker_pickup_note: trimmed,
+    },
+    { expand: "requester,teacher,caretaker,items" },
+  );
+  triggerLoanNotify(id, "pickup_reschedule");
+  return updated;
+}
+
+export async function markLoanPickedUp(id) {
+  if (!isAdmin()) {
+    throw new Error("เฉพาะผู้ดูแลระบบเท่านั้นที่บันทึกการรับของได้");
+  }
+  const updated = await pb.collection("loan_requests").update(
+    id,
+    {
+      pickup_status: "picked_up",
+    },
+    { expand: "requester,teacher,caretaker,items" },
+  );
+  triggerLoanNotify(id, "picked_up");
+  return updated;
 }
 
 export async function updateLoanQuantities(id, quantities) {

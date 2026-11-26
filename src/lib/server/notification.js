@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 import { getUserRoles } from "../roles.js";
+import { PICKUP_LOCATION, formatPickupSchedule } from "../pickup.js";
 
 /**
  * Escapes characters to prevent HTML injection in emails.
@@ -78,7 +79,7 @@ export async function resolveLoanRecipients(
     "superadmin",
   );
 
-  if (event === "teacher_approved") {
+  if (event === "teacher_approved" || event === "pickup_proposed") {
     superAdminEmails.forEach((e) => recipients.add(e.toLowerCase().trim()));
   } else if (event === "created") {
     const borrowerRoles = getUserRoles(borrower);
@@ -148,24 +149,51 @@ export async function sendLoanNotificationEmail(
     itemSummaries.length > 0 ? itemSummaries.join(", ") : "-";
 
   const isTeacherApproved = event === "teacher_approved";
-  const subject = isTeacherApproved
-    ? sanitizeHeader(
-        `[Borrowly] อาจารย์รับทราบคำขอยืมแล้ว: ${borrowerName}`,
-      )
-    : sanitizeHeader(`[Borrowly] คำขอยืมอุปกรณ์ใหม่: ${borrowerName}`);
+  const isPickupProposed = event === "pickup_proposed";
+  const pickupSchedule = formatPickupSchedule(requestRecord);
+  const pickupNote = String(requestRecord?.pickup_note || "").trim();
 
-  const heading = isTeacherApproved
-    ? "อาจารย์รับทราบคำขอยืมอุปกรณ์แล้ว (รออนุมัติส่งมอบ)"
-    : "มีการยื่นคำขอยืมอุปกรณ์ใหม่";
+  const subject = isPickupProposed
+    ? sanitizeHeader(
+        `[Borrowly] ผู้ยืมเสนอเวลานัดรับอุปกรณ์: ${borrowerName} (${pickupSchedule})`,
+      )
+    : isTeacherApproved
+      ? sanitizeHeader(
+          `[Borrowly] อาจารย์รับทราบคำขอยืมแล้ว: ${borrowerName}`,
+        )
+      : sanitizeHeader(`[Borrowly] คำขอยืมอุปกรณ์ใหม่: ${borrowerName}`);
+
+  const heading = isPickupProposed
+    ? "ผู้ยืมเสนอเวลานัดรับอุปกรณ์ (รอผู้ดูแลยืนยันเวลา)"
+    : isTeacherApproved
+      ? "อาจารย์รับทราบคำขอยืมอุปกรณ์แล้ว (รออนุมัติส่งมอบ)"
+      : "มีการยื่นคำขอยืมอุปกรณ์ใหม่";
 
   const itemsHtml =
     itemSummaries.length > 0
       ? itemSummaries.map((s) => `<li>${escapeHtml(s)}</li>`).join("")
       : "<li>-</li>";
 
+  const pickupRowsHtml = isPickupProposed
+    ? `
+          <tr>
+            <td style="padding: 8px 0; color: #64748b;"><strong>วันเวลานัดรับ:</strong></td>
+            <td style="padding: 8px 0; font-weight: 700; color: #1d4ed8;">${escapeHtml(pickupSchedule)}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #64748b;"><strong>สถานที่รับของ:</strong></td>
+            <td style="padding: 8px 0;">${escapeHtml(PICKUP_LOCATION)}</td>
+          </tr>
+          ${
+            pickupNote
+              ? `<tr><td style="padding: 8px 0; color: #64748b;"><strong>หมายเหตุนัดรับ:</strong></td><td style="padding: 8px 0;">${escapeHtml(pickupNote)}</td></tr>`
+              : ""
+          }`
+    : "";
+
   const html = `
     <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; color: #1e293b;">
-      <div style="background-color: #16a34a; color: #ffffff; padding: 20px 24px;">
+      <div style="background-color: ${isPickupProposed ? "#2563eb" : "#16a34a"}; color: #ffffff; padding: 20px 24px;">
         <h2 style="margin: 0; font-size: 20px;">${escapeHtml(heading)}</h2>
         <p style="margin: 4px 0 0; font-size: 13px; opacity: 0.9;">ระบบยืม-คืนอุปกรณ์ ภาควิชาวิทยาการคอมพิวเตอร์ (Borrowly)</p>
       </div>
@@ -179,6 +207,7 @@ export async function sendLoanNotificationEmail(
             <td style="padding: 8px 0; color: #64748b; vertical-align: top;"><strong>อุปกรณ์ที่ยืม:</strong></td>
             <td style="padding: 8px 0;"><ul style="margin: 0; padding-left: 18px;">${itemsHtml}</ul></td>
           </tr>
+          ${pickupRowsHtml}
           <tr>
             <td style="padding: 8px 0; color: #64748b;"><strong>กำหนดวันคืน:</strong></td>
             <td style="padding: 8px 0;">${escapeHtml(dueDateLabel)}</td>
@@ -198,7 +227,7 @@ export async function sendLoanNotificationEmail(
           </tr>
         </table>
         <div style="margin-top: 20px;">
-          <a href="${escapeHtml(approvalsUrl)}" style="display: inline-block; background-color: #16a34a; color: #ffffff; text-decoration: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 14px;">เปิดหน้าอนุมัติคำขอ</a>
+          <a href="${escapeHtml(approvalsUrl)}" style="display: inline-block; background-color: ${isPickupProposed ? "#2563eb" : "#16a34a"}; color: #ffffff; text-decoration: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 14px;">${isPickupProposed ? "ตรวจสอบและยืนยันเวลานัดรับ" : "เปิดหน้าอนุมัติคำขอ"}</a>
         </div>
       </div>
       <div style="padding: 14px 24px; background-color: #f8fafc; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0;">
@@ -207,7 +236,11 @@ export async function sendLoanNotificationEmail(
     </div>
   `;
 
-  const text = `${heading}\nผู้ขอยืม: ${borrowerName} (${borrowerEmail})\nอุปกรณ์: ${itemsText}\nกำหนดวันคืน: ${dueDateLabel}\nอาจารย์ที่ปรึกษา: ${teacherName}\nหมายเหตุ: ${noteText}\nตรวจสอบได้ที่: ${approvalsUrl}`;
+  const text = `${heading}\nผู้ขอยืม: ${borrowerName} (${borrowerEmail})\nอุปกรณ์: ${itemsText}${
+    isPickupProposed
+      ? `\nวันเวลานัดรับ: ${pickupSchedule}\nสถานที่รับของ: ${PICKUP_LOCATION}${pickupNote ? `\nหมายเหตุนัดรับ: ${pickupNote}` : ""}`
+      : ""
+  }\nกำหนดวันคืน: ${dueDateLabel}\nอาจารย์ที่ปรึกษา: ${teacherName}\nหมายเหตุ: ${noteText}\nตรวจสอบได้ที่: ${approvalsUrl}`;
 
   try {
     await transporter.sendMail({
@@ -280,11 +313,17 @@ export async function sendBorrowerStatusEmail(
   const rejectReason = String(
     requestRecord?.adminComment || requestRecord?.teacherComment || "",
   ).trim();
+  const pickupSchedule = formatPickupSchedule(requestRecord);
+  const pickupNote = String(requestRecord?.pickup_note || "").trim();
+  const caretakerPickupNote = String(
+    requestRecord?.caretaker_pickup_note || "",
+  ).trim();
 
   let subject = "[Borrowly] อัปเดตสถานะคำขอยืมอุปกรณ์";
   let heading = "อัปเดตสถานะคำขอยืมอุปกรณ์";
   let stepText = "กำลังดำเนินการ";
   let accentColor = "#16a34a";
+  let ctaLabel = "ติดตามสถานะคำขอของฉัน";
 
   if (event === "created") {
     subject = "[Borrowly] ส่งคำขอยืมอุปกรณ์เรียบร้อยแล้ว";
@@ -293,7 +332,7 @@ export async function sendBorrowerStatusEmail(
     if (status === "pending_teacher") {
       stepText = `ขั้นตอนปัจจุบัน: รออาจารย์ที่ปรึกษา (${teacherName}) รับทราบคำขอ`;
     } else if (status === "pending_caretaker") {
-      stepText = "ขั้นตอนปัจจุบัน: รอเจ้าหน้าที่อนุมัติและส่งมอบอุปกรณ์";
+      stepText = "ขั้นตอนปัจจุบัน: รอเจ้าหน้าที่อนุมัติคำขอ";
     } else if (status === "approved") {
       stepText = `ขั้นตอนปัจจุบัน: อนุมัติเรียบร้อยแล้ว (กำหนดคืน: ${dueDateLabel})`;
       accentColor = "#16a34a";
@@ -301,13 +340,35 @@ export async function sendBorrowerStatusEmail(
   } else if (event === "teacher_approved") {
     subject = "[Borrowly] อาจารย์รับทราบคำขอยืมแล้ว (รออนุมัติส่งมอบ)";
     heading = "อาจารย์รับทราบคำขอยืมอุปกรณ์แล้ว";
-    stepText = "ขั้นตอนปัจจุบัน: รอเจ้าหน้าที่ตรวจสอบ อนุมัติ และส่งมอบอุปกรณ์";
+    stepText = "ขั้นตอนปัจจุบัน: รอเจ้าหน้าที่ตรวจสอบและอนุมัติคำขอ";
     accentColor = "#0284c7";
   } else if (event === "approved") {
-    subject = "[Borrowly] อนุมัติคำขอยืมอุปกรณ์เรียบร้อยแล้ว";
+    subject = `[Borrowly] อนุมัติคำขอยืมแล้ว — กรุณาเลือกเวลานัดรับอุปกรณ์ (${PICKUP_LOCATION})`;
     heading = "คำขอยืมอุปกรณ์ได้รับการอนุมัติแล้ว";
-    stepText = `ขั้นตอนปัจจุบัน: กำลังยืมอุปกรณ์ (กรุณาคืนภายใน ${dueDateLabel})`;
+    stepText = `ขั้นตอนถัดไป: กรุณาเลือกวันทำการ (จันทร์–ศุกร์) และช่วงเวลาที่สะดวกรับอุปกรณ์ (09:00–16:00 น.) ณ ${PICKUP_LOCATION}`;
     accentColor = "#16a34a";
+    ctaLabel = "เลือกวันและเวลานัดรับอุปกรณ์";
+  } else if (event === "pickup_proposed") {
+    subject = `[Borrowly] ส่งเวลานัดรับอุปกรณ์แล้ว: ${pickupSchedule}`;
+    heading = "ส่งเวลานัดรับอุปกรณ์เรียบร้อยแล้ว";
+    stepText = `ขั้นตอนปัจจุบัน: รอผู้ดูแลตรวจสอบและยืนยันเวลานัดรับ ณ ${PICKUP_LOCATION}`;
+    accentColor = "#2563eb";
+  } else if (event === "pickup_confirmed") {
+    subject = `[Borrowly] ยืนยันเวลานัดรับอุปกรณ์: ${pickupSchedule} (${PICKUP_LOCATION})`;
+    heading = "ยืนยันเวลานัดรับอุปกรณ์เรียบร้อยแล้ว";
+    stepText = `กรุณามาติดต่อรับอุปกรณ์ในวันและเวลาที่นัดหมาย ณ ${PICKUP_LOCATION}`;
+    accentColor = "#16a34a";
+  } else if (event === "pickup_reschedule") {
+    subject = "[Borrowly] ขอเปลี่ยนเวลานัดรับอุปกรณ์ — กรุณาเลือกเวลาใหม่";
+    heading = "ผู้ดูแลไม่สะดวกในเวลาดังกล่าว กรุณาเลือกเวลานัดรับใหม่";
+    stepText = `กรุณาเลือกวันทำการ (จันทร์–ศุกร์) และช่วงเวลาใหม่ (09:00–16:00 น.) ณ ${PICKUP_LOCATION}`;
+    accentColor = "#d97706";
+    ctaLabel = "เลือกวันและเวลานัดรับใหม่";
+  } else if (event === "picked_up") {
+    subject = "[Borrowly] บันทึกการรับอุปกรณ์เรียบร้อยแล้ว";
+    heading = "บันทึกการรับอุปกรณ์เรียบร้อยแล้ว";
+    stepText = `สถานะ: รับอุปกรณ์ ณ ${PICKUP_LOCATION} เรียบร้อยแล้ว (กรุณาคืนภายใน ${dueDateLabel})`;
+    accentColor = "#0f766e";
   } else if (event === "rejected") {
     subject = "[Borrowly] คำขอยืมอุปกรณ์ไม่ได้รับการอนุมัติ";
     heading = "คำขอยืมอุปกรณ์ไม่ได้รับการอนุมัติ";
@@ -320,8 +381,27 @@ export async function sendBorrowerStatusEmail(
     accentColor = "#0f766e";
   }
 
+  const showPickupInfo = [
+    "pickup_proposed",
+    "pickup_confirmed",
+    "pickup_reschedule",
+    "picked_up",
+  ].includes(event);
+
   const extraRows = [
-    actorName && event !== "created"
+    showPickupInfo && pickupSchedule !== "-"
+      ? `<tr><td style="padding: 8px 0; color: #64748b;"><strong>วันเวลานัดรับ:</strong></td><td style="padding: 8px 0; font-weight: 700; color: #0f172a;">${escapeHtml(pickupSchedule)}</td></tr>`
+      : "",
+    event === "approved" || showPickupInfo
+      ? `<tr><td style="padding: 8px 0; color: #64748b;"><strong>สถานที่รับของ:</strong></td><td style="padding: 8px 0; font-weight: 600;">${escapeHtml(PICKUP_LOCATION)}</td></tr>`
+      : "",
+    pickupNote && (event === "pickup_proposed" || event === "pickup_confirmed")
+      ? `<tr><td style="padding: 8px 0; color: #64748b;"><strong>หมายเหตุนัดรับ:</strong></td><td style="padding: 8px 0;">${escapeHtml(pickupNote)}</td></tr>`
+      : "",
+    caretakerPickupNote && event === "pickup_reschedule"
+      ? `<tr><td style="padding: 8px 0; color: #64748b;"><strong>ข้อความจากผู้ดูแล:</strong></td><td style="padding: 8px 0; color: #b45309; font-weight: 600;">${escapeHtml(caretakerPickupNote)}</td></tr>`
+      : "",
+    actorName && event !== "created" && event !== "pickup_proposed"
       ? `<tr><td style="padding: 8px 0; color: #64748b;"><strong>ดำเนินการโดย:</strong></td><td style="padding: 8px 0;">${escapeHtml(actorName)}</td></tr>`
       : "",
     assetTags && event === "approved"
@@ -360,7 +440,7 @@ export async function sendBorrowerStatusEmail(
           ${extraRows}
         </table>
         <div style="margin-top: 20px;">
-          <a href="${escapeHtml(requestsUrl)}" style="display: inline-block; background-color: ${accentColor}; color: #ffffff; text-decoration: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 14px;">ติดตามสถานะคำขอของฉัน</a>
+          <a href="${escapeHtml(requestsUrl)}" style="display: inline-block; background-color: ${accentColor}; color: #ffffff; text-decoration: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 14px;">${escapeHtml(ctaLabel)}</a>
         </div>
       </div>
       <div style="padding: 14px 24px; background-color: #f8fafc; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0;">
@@ -369,7 +449,13 @@ export async function sendBorrowerStatusEmail(
     </div>
   `;
 
-  const text = `${heading}\n${stepText}\nผู้ขอยืม: ${borrowerName}\nอุปกรณ์: ${itemsText}\nกำหนดวันคืน: ${dueDateLabel}${
+  const text = `${heading}\n${stepText}\nผู้ขอยืม: ${borrowerName}\nอุปกรณ์: ${itemsText}${
+    showPickupInfo && pickupSchedule !== "-" ? `\nวันเวลานัดรับ: ${pickupSchedule}` : ""
+  }${event === "approved" || showPickupInfo ? `\nสถานที่รับของ: ${PICKUP_LOCATION}` : ""}${
+    caretakerPickupNote && event === "pickup_reschedule"
+      ? `\nข้อความจากผู้ดูแล: ${caretakerPickupNote}`
+      : ""
+  }\nกำหนดวันคืน: ${dueDateLabel}${
     assetTags && event === "approved" ? `\nเลขครุภัณฑ์ / SN: ${assetTags}` : ""
   }${rejectReason && event === "rejected" ? `\nเหตุผล: ${rejectReason}` : ""}\nติดตามสถานะได้ที่: ${requestsUrl}`;
 

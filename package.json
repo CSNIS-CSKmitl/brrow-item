@@ -11,7 +11,7 @@
     "start": "node server.js",
     "check": "svelte-kit sync && svelte-check",
     "check:watch": "svelte-kit sync && svelte-check --watch",
-    "test": "node --test src/lib/admin-stats.test.js tests/roles.test.mjs tests/notification.test.mjs",
+    "test": "node --test src/lib/admin-stats.test.js tests/roles.test.mjs tests/notification.test.mjs tests/pickup.test.mjs",
     "setup:stats-db": "node --env-file-if-exists=.env scripts/setup-stats-db.mjs --apply",
     "refactor:db": "node --env-file-if-exists=.env scripts/refactor-db.mjs --apply"
   },

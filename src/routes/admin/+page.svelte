@@ -3,6 +3,8 @@
   import { Trash2, Plus, Pencil, PackageOpen, Check, X, Download, Clock3, Package, RotateCcw } from '@lucide/svelte';
   import Button from '../../lib/components/Button.svelte';
   import AdminStats from '../../lib/components/AdminStats.svelte';
+  import LoanItemsList from '../../lib/components/LoanItemsList.svelte';
+  import CaretakerPickupPanel from '../../lib/components/CaretakerPickupPanel.svelte';
   import { items as mockItems } from '../../lib/mock-data.js';
   import { items, user, teachers, loadItems } from '../../lib/stores.js';
   import { createItem, updateItem, deleteItem, getLoanRequests, updateLoanStatus, markLoanReturned, getUserType, isAdmin, pb } from '../../lib/pocketbase.js';
@@ -601,10 +603,8 @@
                 </button>
               </div>
 
-              <p class="text-sm text-[#778078]">
-                ของที่ขอยืม: <b class="text-ink">{(request.expand?.items ? request.expand.items.map((i) => i.name).join(', ') : (request.items || request.itemIds || []).map(itemName).join(', ')) || '-'}</b>
-              </p>
-              <p class="text-sm text-[#778078]">
+              <LoanItemsList {request} allItems={$items} />
+              <p class="text-sm text-[#778078] pt-1">
                 กำหนดเวลาคืน: <b class="text-ink">{formatDateTime(request.dueDate)}</b> · อีเมล: {request.email}
               </p>
               {#if request.approvedAt}
@@ -658,6 +658,14 @@
                   </div>
                 </div>
               {/if}
+
+              <CaretakerPickupPanel
+                {request}
+                canManage={true}
+                onUpdated={async () => {
+                  await loadRequests();
+                }}
+              />
             </div>
 
             <!-- Action buttons / notices for caretaker -->

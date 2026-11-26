@@ -2,9 +2,11 @@
   import { onMount, onDestroy } from 'svelte';
   import { Check, Clock3, Download, Filter, History, ListFilter, RotateCcw, X } from '@lucide/svelte';
   import Button from '../../lib/components/Button.svelte';
+  import LoanItemsList from '../../lib/components/LoanItemsList.svelte';
+  import CaretakerPickupPanel from '../../lib/components/CaretakerPickupPanel.svelte';
   import { items as mockItems } from '../../lib/mock-data.js';
   import { items, user, userType, teachers } from '../../lib/stores.js';
-  import { getLoanRequests, updateLoanStatus, updateLoanQuantities, markLoanReturned, pb } from '../../lib/pocketbase.js';
+  import { getLoanRequests, updateLoanStatus, updateLoanQuantities, markLoanReturned, isAdmin, pb } from '../../lib/pocketbase.js';
   import { exportRequestsToCSV, exportSingleRequestToCSV, formatDateTime } from '../../lib/csv.js';
   import { getStatusBadgeClass, getStatusDotClass } from '../../lib/status.js';
 
@@ -67,7 +69,10 @@
 
   // Filter requests based on active tab
   $: pendingRequests = requests.filter((r) =>
-    $userType === 'teachers' ? r.status === 'pending_teacher' : r.status === 'pending_caretaker'
+    $userType === 'teachers'
+      ? r.status === 'pending_teacher'
+      : r.status === 'pending_caretaker' ||
+        (r.status === 'approved' && r.pickup_status === 'pending_caretaker_confirm')
   );
 
   $: pendingTeacherRequests = requests.filter((r) => r.status === 'pending_teacher');
@@ -356,10 +361,8 @@
               {/if}
             </div>
 
-            <p class="text-sm text-[#778078]">
-              ของที่ขอยืม: <b class="text-ink">{requestItems(request).map((item) => `${typeof item === 'object' ? item.name : itemName(item)} × ${requestQuantity(request, item)}`).join(', ') || '-'}</b>
-            </p>
-            <p class="text-sm text-[#778078]">
+            <LoanItemsList {request} allItems={$items} />
+            <p class="text-sm text-[#778078] pt-1">
               กำหนดเวลาคืน: <b class="text-ink">{formatDate(request.dueDate)}</b> · อีเมล: {request.email}
             </p>
             {#if request.approvedAt}
@@ -413,6 +416,14 @@
                 </div>
               </div>
             {/if}
+
+            <CaretakerPickupPanel
+              {request}
+              canManage={Boolean($user?.isAdmin || isAdmin($user))}
+              onUpdated={async () => {
+                await loadApprovalRequests();
+              }}
+            />
           </div>
 
           <!-- Action Buttons for Teacher -->

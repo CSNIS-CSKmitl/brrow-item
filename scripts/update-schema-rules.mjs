@@ -64,18 +64,21 @@ async function run() {
   console.log("\n--- 1. Checking loan_requests ---");
   const loanReqCol = await pb.collections.getOne("loan_requests");
 
-  const targetLoanReqListRule =
-    '@request.auth.id != "" && (requester = @request.auth.id || teacher = @request.auth.id || caretaker = @request.auth.id || @request.auth.user_type.type = "superadmin" || @request.auth.user_type.type = "admin" || @request.auth.user_type = "000000000000009" || @request.auth.user_type = "000000000000000")';
-  const targetLoanReqViewRule =
-    '@request.auth.id != "" && (requester = @request.auth.id || teacher = @request.auth.id || caretaker = @request.auth.id || @request.auth.user_type.type = "superadmin" || @request.auth.user_type.type = "admin" || @request.auth.user_type = "000000000000009" || @request.auth.user_type = "000000000000000")';
-  const targetLoanReqDeleteRule =
-    '@request.auth.id != "" && (@request.auth.user_type.type = "superadmin" || @request.auth.user_type.type = "admin" || @request.auth.user_type = "000000000000009" || @request.auth.user_type = "000000000000000")';
+  const adminExpr =
+    '(@request.auth.user_type.type ?= "super_admin" || @request.auth.user_type.type ?= "superadmin" || @request.auth.user_type.type ?= "head" || @request.auth.user_type.type ?= "admin" || @request.auth.user_type ?= "000000000000009" || @request.auth.user_type ?= "000000000000010" || @request.auth.user_type ?= "000000000000005" || @request.auth.user_type ?= "000000000000000")';
 
-  const targetLoanReqCreateRule =
-    '@request.auth.id != "" && @request.body.requester = @request.auth.id && (@request.body.status = "pending_teacher" || (@request.auth.user_type.type = "teachers" && @request.body.status = "pending_caretaker" && @request.body.teacher = @request.auth.id) || ((@request.auth.user_type.type = "superadmin" || @request.auth.user_type.type = "admin" || @request.auth.user_type = "000000000000009" || @request.auth.user_type = "000000000000000") && @request.body.status = "approved" && @request.body.teacher = @request.auth.id && @request.body.caretaker = @request.auth.id))';
+  const targetLoanReqListRule = `@request.auth.id != "" && (requester = @request.auth.id || teacher = @request.auth.id || caretaker = @request.auth.id || ${adminExpr})`;
+  const targetLoanReqViewRule = `@request.auth.id != "" && (requester = @request.auth.id || teacher = @request.auth.id || caretaker = @request.auth.id || ${adminExpr})`;
+  const targetLoanReqDeleteRule = `@request.auth.id != "" && ${adminExpr}`;
+
+  const targetLoanReqCreateRule = `@request.auth.id != "" && @request.body.requester = @request.auth.id && (@request.body.status = "pending_teacher" || ((@request.auth.user_type.type ?= "teachers" || @request.auth.user_type.type ?= "staff" || @request.auth.user_type.type ?= "head" || @request.auth.user_type.type ?= "super_admin" || @request.auth.user_type.type ?= "superadmin" || @request.auth.user_type.type ?= "admin" || @request.auth.user_type ?= "000000000000000" || @request.auth.user_type ?= "000000000000002" || @request.auth.user_type ?= "000000000000004" || @request.auth.user_type ?= "000000000000005" || @request.auth.user_type ?= "000000000000006" || @request.auth.user_type ?= "000000000000007" || @request.auth.user_type ?= "000000000000009" || @request.auth.user_type ?= "000000000000010") && @request.body.status = "pending_caretaker" && @request.body.teacher = @request.auth.id) || (${adminExpr} && @request.body.status = "approved" && @request.body.teacher = @request.auth.id && @request.body.caretaker = @request.auth.id))`;
 
   const targetLoanReqUpdateRule =
-    '(requester = @request.auth.id && status = "pending_teacher" && (@request.body.status:changed = false || @request.body.status = "cancelled") && @request.body.requester:changed = false && @request.body.borrowerName:changed = false && @request.body.email:changed = false && @request.body.items:changed = false && @request.body.caretaker:changed = false && @request.body.teacherComment:changed = false && @request.body.adminComment:changed = false) || (teacher = @request.auth.id && @request.auth.user_type.type = "teachers" && status = "pending_teacher" && ((@request.body.status = "pending_caretaker" && @request.body.teacherComment:changed = false) || (@request.body.status = "rejected" && @request.body.teacherComment != "")) && @request.body.requester:changed = false && @request.body.borrowerName:changed = false && @request.body.email:changed = false && @request.body.items:changed = false && @request.body.dueDate:changed = false && @request.body.note:changed = false && @request.body.teacher:changed = false && @request.body.caretaker:changed = false && @request.body.adminComment:changed = false) || ((@request.auth.user_type.type = "superadmin" || @request.auth.user_type.type = "admin" || @request.auth.user_type = "000000000000009" || @request.auth.user_type = "000000000000000") && status = "pending_caretaker" && ((@request.body.status = "approved" && @request.body.teacherComment:changed = false) || (@request.body.status = "rejected" && @request.body.teacherComment:changed = false && @request.body.adminComment != ""))) || ((@request.auth.user_type.type = "superadmin" || @request.auth.user_type.type = "admin" || @request.auth.user_type = "000000000000009" || @request.auth.user_type = "000000000000000") && (status = "approved" || status = "returned") && @request.body.status = "returned")';
+    `(requester = @request.auth.id && (status = "pending_teacher" || status = "pending_caretaker") && (@request.body.status:changed = false || @request.body.status = "cancelled") && @request.body.requester:changed = false && @request.body.borrowerName:changed = false && @request.body.email:changed = false && @request.body.items:changed = false && @request.body.caretaker:changed = false && @request.body.teacherComment:changed = false && @request.body.adminComment:changed = false)` +
+    ` || (requester = @request.auth.id && status = "approved" && (pickup_status = "" || pickup_status = "none" || pickup_status = "pending_user_select" || pickup_status = "reschedule_requested") && @request.body.pickup_status = "pending_caretaker_confirm" && @request.body.pickup_date != "" && @request.body.pickup_slot != "" && @request.body.status:changed = false && @request.body.requester:changed = false && @request.body.borrowerName:changed = false && @request.body.email:changed = false && @request.body.items:changed = false && @request.body.dueDate:changed = false && @request.body.teacher:changed = false && @request.body.caretaker:changed = false && @request.body.teacherComment:changed = false && @request.body.adminComment:changed = false && @request.body.caretaker_pickup_note:changed = false && @request.body.pickup_confirmed_at:changed = false)` +
+    ` || (teacher = @request.auth.id && @request.auth.user_type.type ?= "teachers" && status = "pending_teacher" && ((@request.body.status = "pending_caretaker" && @request.body.teacherComment:changed = false) || (@request.body.status = "rejected" && @request.body.teacherComment != "")) && @request.body.requester:changed = false && @request.body.borrowerName:changed = false && @request.body.email:changed = false && @request.body.items:changed = false && @request.body.dueDate:changed = false && @request.body.note:changed = false && @request.body.teacher:changed = false && @request.body.caretaker:changed = false && @request.body.adminComment:changed = false)` +
+    ` || (${adminExpr} && status = "pending_caretaker" && ((@request.body.status = "approved" && @request.body.teacherComment:changed = false) || (@request.body.status = "rejected" && @request.body.teacherComment:changed = false && @request.body.adminComment != "") || @request.body.status = "cancelled" || @request.body.status:changed = false))` +
+    ` || (${adminExpr} && (status = "approved" || status = "returned") && (@request.body.status = "returned" || @request.body.status:changed = false))`;
 
   let reqChanged = false;
   let reqPatch = {};
@@ -140,6 +143,39 @@ async function run() {
     console.log('[loan_requests] Fix maxSelect: 1 for select "status"');
     statusField.maxSelect = 1;
     fieldsChanged = true;
+  }
+
+  // Ensure pickup appointment fields exist in loan_requests
+  const pickupFields = [
+    { name: "pickup_date", type: "text", required: false },
+    { name: "pickup_slot", type: "text", required: false },
+    { name: "pickup_time", type: "date", required: false },
+    {
+      name: "pickup_status",
+      type: "select",
+      required: false,
+      maxSelect: 1,
+      values: [
+        "none",
+        "pending_user_select",
+        "pending_caretaker_confirm",
+        "confirmed",
+        "reschedule_requested",
+        "picked_up",
+      ],
+    },
+    { name: "pickup_note", type: "text", required: false },
+    { name: "caretaker_pickup_note", type: "text", required: false },
+    { name: "pickup_confirmed_at", type: "date", required: false },
+  ];
+
+  for (const pf of pickupFields) {
+    const existing = reqFields.find((f) => f.name === pf.name);
+    if (!existing) {
+      console.log(`[loan_requests] Add field "${pf.name}" (${pf.type})`);
+      reqFields.push(pf);
+      fieldsChanged = true;
+    }
   }
 
   if (fieldsChanged) {

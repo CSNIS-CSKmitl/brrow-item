@@ -59,7 +59,8 @@
     <LoanPanel
       selectedItems={$selectedItems}
       teachers={$teachers}
-      isTeacher={$userType === 'teachers' || $userType === 'staff'}
+      isTeacher={$userType === 'teachers' || $userType === 'staff' || $userType === 'head' || $userType === 'super_admin' || $userType === 'superadmin' || $userType === 'admin' || $canAdmin}
+      userRole={$userType}
       borrowerName={$user?.name || $user?.email || ''}
       borrowerEmail={$user?.email || ''}
       bind:open={$panelOpen}
