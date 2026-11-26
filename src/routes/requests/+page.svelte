@@ -5,12 +5,13 @@
   import Button from '../../lib/components/Button.svelte';
   import LoanItemsList from '../../lib/components/LoanItemsList.svelte';
   import BorrowerPickupPanel from '../../lib/components/BorrowerPickupPanel.svelte';
-  import { items, teachers, userType } from '../../lib/stores.js';
+  import { items, teachers, userType, toastMessage } from '../../lib/stores.js';
   import { getMyLoanRequests, updateMyLoanRequest, cancelLoanRequest, pb } from '../../lib/pocketbase.js';
   import { exportSingleRequestToCSV, formatDateTime } from '../../lib/csv.js';
   import { getStatusBadgeClass, getStatusDotClass } from '../../lib/status.js';
 
   let requests = [];
+  let loading = true;
   let editingId = '';
   let editForm = { dueDate: '', note: '', teacher: '', quantities: {} };
   let editError = '';
@@ -36,6 +37,8 @@
       requests = await getMyLoanRequests();
     } catch (e) {
       requests = [];
+    } finally {
+      loading = false;
     }
   }
 
@@ -124,8 +127,10 @@
       await updateMyLoanRequest(request.id, editForm);
       await loadMyRequests();
       editingId = '';
+      toastMessage.set({ type: 'success', text: 'บันทึกการแก้ไขคำขอยืมเรียบร้อยแล้ว' });
     } catch (error) {
       editError = error?.response?.message || 'บันทึกการแก้ไขไม่สำเร็จ';
+      toastMessage.set({ type: 'error', text: editError });
     } finally {
       saving = false;
     }
@@ -137,8 +142,10 @@
       await cancelLoanRequest(request.id);
       await loadMyRequests();
       editingId = '';
+      toastMessage.set({ type: 'success', text: 'ยกเลิกคำขอยืมเรียบร้อยแล้ว' });
     } catch (error) {
       editError = error?.response?.message || 'ยกเลิกคำขอไม่สำเร็จ';
+      toastMessage.set({ type: 'error', text: editError });
     }
   }
 </script>
@@ -148,7 +155,22 @@
     <h1 class="text-3xl font-bold text-ink">คำขอยืม</h1>
   </div>
 
-  {#if requests.length === 0}
+  {#if loading}
+    <div class="space-y-4" aria-busy="true" aria-label="กำลังโหลดคำขอยืม">
+      {#each Array(3) as _}
+        <div class="rounded-2xl border border-[#e4e5de] bg-white p-6 shadow-xs">
+          <div class="flex items-center justify-between gap-4">
+            <div class="space-y-2">
+              <div class="h-3 w-36 animate-pulse rounded bg-[#e9ede7]"></div>
+              <div class="h-5 w-48 animate-pulse rounded bg-[#e4e9e2]"></div>
+            </div>
+            <div class="h-7 w-28 animate-pulse rounded-full bg-[#eef2ec]"></div>
+          </div>
+          <div class="mt-4 h-24 animate-pulse rounded-xl bg-[#f3f6f1]"></div>
+        </div>
+      {/each}
+    </div>
+  {:else if requests.length === 0}
     <div class="rounded-2xl border border-dashed border-[#d8d8d0] py-16 text-center text-[#7c857e]">
       ยังไม่มีคำขอยืมของคุณ
       <a class="mt-4 inline-flex rounded-xl bg-sage px-5 py-3 text-sm font-bold text-white" href="/catalog">ไปเลือกของ</a>

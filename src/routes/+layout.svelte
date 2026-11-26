@@ -65,7 +65,11 @@
     {#if data?.guardFailed}
       <UnauthorizedPage message={data.guardMessage} />
     {:else}
-      {@render children?.()}
+      {#key path}
+        <div class="animate-fade-in-up">
+          {@render children?.()}
+        </div>
+      {/key}
     {/if}
   </div>
 
@@ -94,10 +98,10 @@
 
   {#if $toastMessage?.text}
     <div
-      transition:fly={{ y: 24, duration: 220 }}
+      transition:fly={{ y: -24, duration: 220 }}
       role="status"
       aria-live="polite"
-      class="fixed bottom-5 right-5 z-[110] flex max-w-sm items-center gap-2.5 rounded-2xl border px-4 py-3 text-sm font-semibold shadow-xl backdrop-blur-md {$toastMessage.type === 'error'
+      class="fixed top-4 left-1/2 -translate-x-1/2 z-[120] flex w-[calc(100%-2rem)] max-w-md items-center gap-2.5 rounded-2xl border px-4 py-3 text-sm font-semibold shadow-xl backdrop-blur-md {$toastMessage.type === 'error'
         ? 'border-rose-200 bg-rose-50/95 text-rose-900'
         : 'border-emerald-200 bg-white/95 text-emerald-900'}"
     >

@@ -5,7 +5,7 @@
   import LoanItemsList from '../../lib/components/LoanItemsList.svelte';
   import CaretakerPickupPanel from '../../lib/components/CaretakerPickupPanel.svelte';
   import { items as mockItems } from '../../lib/mock-data.js';
-  import { items, user, userType, teachers } from '../../lib/stores.js';
+  import { items, user, userType, teachers, toastMessage } from '../../lib/stores.js';
   import { getLoanRequests, updateLoanStatus, updateLoanQuantities, markLoanReturned, isAdmin, pb } from '../../lib/pocketbase.js';
   import { exportRequestsToCSV, exportSingleRequestToCSV, formatDateTime } from '../../lib/csv.js';
   import { getStatusBadgeClass, getStatusDotClass } from '../../lib/status.js';
@@ -21,6 +21,7 @@
   };
 
   let requests = [];
+  let loading = true;
   let activeTab = 'pending'; // 'pending' | 'history' | 'all'
 
   // Reject state
@@ -52,6 +53,8 @@
       }
     } catch (error) {
       requests = [];
+    } finally {
+      loading = false;
     }
   }
 
@@ -326,7 +329,20 @@
 
   <!-- Requests List -->
   <div class="space-y-4">
-    {#if filteredRequests.length === 0}
+    {#if loading}
+      {#each Array(3) as _}
+        <div class="rounded-2xl border border-[#e4e5de] bg-white p-5 shadow-xs">
+          <div class="flex items-center justify-between gap-4">
+            <div class="space-y-2">
+              <div class="h-5 w-44 animate-pulse rounded bg-[#e4e9e2]"></div>
+              <div class="h-3 w-64 animate-pulse rounded bg-[#eef2ec]"></div>
+            </div>
+            <div class="h-8 w-24 animate-pulse rounded-lg bg-[#eef2ec]"></div>
+          </div>
+          <div class="mt-4 h-20 animate-pulse rounded-xl bg-[#f3f6f1]"></div>
+        </div>
+      {/each}
+    {:else if filteredRequests.length === 0}
       <div class="rounded-2xl border border-dashed border-[#d8d8d0] py-16 text-center text-[#7c857e]">
         {#if activeTab === 'pending'}
           ไม่มีคำขอที่รอดำเนินการในขณะนี้

@@ -68,11 +68,20 @@ export async function loadTeachersList() {
 }
 
 export function toggleItem(item) {
-  selectedItems.update((list) =>
-    list.some((selected) => selected.id === item.id)
+  let added = false;
+  selectedItems.update((list) => {
+    const exists = list.some((selected) => selected.id === item.id);
+    added = !exists;
+    return exists
       ? list.filter((selected) => selected.id !== item.id)
-      : [...list, item],
-  );
+      : [...list, item];
+  });
+  toastMessage.set({
+    type: "success",
+    text: added
+      ? `เพิ่ม "${item.name}" ลงรายการยืมแล้ว`
+      : `นำ "${item.name}" ออกจากรายการยืมแล้ว`,
+  });
 }
 
 export async function submitLoan(form) {

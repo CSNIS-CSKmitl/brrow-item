@@ -12,6 +12,7 @@
     requestPickupReschedule,
     markLoanPickedUp,
   } from '../pocketbase.js';
+  import { toastMessage } from '../stores.js';
 
   export let request;
   export let canManage = false;
@@ -32,9 +33,11 @@
     errorMsg = '';
     try {
       await confirmPickupTime(request.id);
+      toastMessage.set({ type: 'success', text: 'ยืนยันเวลานัดรับอุปกรณ์เรียบร้อยแล้ว' });
       await onUpdated('ยืนยันเวลานัดรับอุปกรณ์และส่งอีเมลแจ้งผู้ยืมแล้ว');
     } catch (err) {
       errorMsg = err?.message || 'ไม่สามารถยืนยันเวลานัดรับได้';
+      toastMessage.set({ type: 'error', text: errorMsg });
     } finally {
       busy = false;
     }
@@ -52,9 +55,11 @@
       await requestPickupReschedule(request.id, rescheduleNote.trim());
       showRescheduleForm = false;
       rescheduleNote = '';
+      toastMessage.set({ type: 'success', text: 'ส่งคำขอเปลี่ยนเวลานัดรับเรียบร้อยแล้ว' });
       await onUpdated('ส่งคำขอเปลี่ยนเวลานัดรับและแจ้งผู้ยืมทางอีเมลแล้ว');
     } catch (err) {
       errorMsg = err?.message || 'ไม่สามารถส่งคำขอเปลี่ยนเวลาได้';
+      toastMessage.set({ type: 'error', text: errorMsg });
     } finally {
       busy = false;
     }
@@ -66,9 +71,11 @@
     errorMsg = '';
     try {
       await markLoanPickedUp(request.id);
+      toastMessage.set({ type: 'success', text: 'บันทึกการส่งมอบอุปกรณ์เรียบร้อยแล้ว' });
       await onUpdated('บันทึกการส่งมอบอุปกรณ์เรียบร้อยแล้ว');
     } catch (err) {
       errorMsg = err?.message || 'ไม่สามารถบันทึกการรับอุปกรณ์ได้';
+      toastMessage.set({ type: 'error', text: errorMsg });
     } finally {
       busy = false;
     }

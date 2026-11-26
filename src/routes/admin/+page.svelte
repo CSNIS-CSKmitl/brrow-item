@@ -1074,7 +1074,7 @@
         <div class="flex items-center gap-4 rounded-xl border border-[#e7ebe6] bg-[#fafbf9] p-3">
           <div class="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-[#e2e7e2] bg-white p-1">
             {#if form.image}
-              <img src={form.image} alt="ตัวอย่างรูปภาพ" class="h-full w-full object-contain" />
+              <img src={form.image} alt="ตัวอย่างรูปภาพ" loading="lazy" decoding="async" class="h-full w-full object-contain" />
             {:else}
               <div class="grid h-full w-full place-items-center text-[#9fa9a0]">
                 <Package size={22} />

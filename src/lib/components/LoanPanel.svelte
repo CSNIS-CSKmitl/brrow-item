@@ -54,7 +54,7 @@
       <div class="space-y-3">
         {#each selectedItems as item}
           <div class="flex items-center gap-3 rounded-xl border border-[#e6e3dc] bg-white p-3">
-            <img src={item.image} alt="" class="h-12 w-12 rounded-lg object-cover"/>
+            <img src={item.image} alt={item.name} loading="lazy" decoding="async" class="h-12 w-12 rounded-lg object-cover"/>
             <div class="min-w-0">
               <p class="truncate text-sm font-bold text-ink">{item.name}</p>
               <p class="text-xs text-[#818981]">{item.category}</p>

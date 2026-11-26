@@ -16,6 +16,7 @@
     needsUserPickupSelection,
   } from '../pickup.js';
   import { proposePickupTime } from '../pocketbase.js';
+  import { toastMessage } from '../stores.js';
 
   export let request;
   export let onUpdated = () => {};
@@ -70,9 +71,11 @@
         pickupNote,
       });
       openSelector = false;
+      toastMessage.set({ type: 'success', text: 'ส่งเวลานัดรับอุปกรณ์เรียบร้อยแล้ว' });
       await onUpdated();
     } catch (err) {
       errorMsg = err?.message || 'ไม่สามารถบันทึกเวลานัดรับได้ กรุณาลองใหม่';
+      toastMessage.set({ type: 'error', text: errorMsg });
     } finally {
       submitting = false;
     }
