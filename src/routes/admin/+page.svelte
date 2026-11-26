@@ -1155,14 +1155,24 @@
           ></textarea>
         </label>
 
-        <label class="flex items-center gap-2.5 rounded-xl border border-[#e4eae4] bg-[#f7faf7] px-3.5 py-2.5 cursor-pointer">
-          <input
-            type="checkbox"
-            bind:checked={form.is_active}
-            class="h-4 w-4 rounded border-[#c4d6c5] text-sage focus:ring-sage"
-          />
-          <span class="text-sm font-semibold text-ink">เปิดให้ยืมในแคตตาล็อก (Active)</span>
-        </label>
+        <div class="flex items-center justify-between gap-3 rounded-xl border border-[#e4eae4] bg-[#f7faf7] px-4 py-3">
+          <div>
+            <p class="text-sm font-semibold text-ink">เปิดให้ยืมในแคตตาล็อก (Active)</p>
+            <p class="text-[11px] text-[#737d75]">หากปิดไว้ อุปกรณ์นี้จะถูกซ่อนจากหน้าแคตตาล็อกผู้ยืม</p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={form.is_active}
+            aria-label="เปิดให้ยืมในแคตตาล็อก"
+            class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-sage/30 {form.is_active ? 'bg-sage' : 'bg-[#cfd5cf]'}"
+            on:click={() => (form.is_active = !form.is_active)}
+          >
+            <span
+              class="inline-block h-4.5 w-4.5 transform rounded-full bg-white shadow-sm transition-transform duration-200 {form.is_active ? 'translate-x-5.5' : 'translate-x-1'}"
+            ></span>
+          </button>
+        </div>
 
         {#if itemError}
           <p transition:slide={{ duration: 160 }} class="rounded-lg bg-rose-50 border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-700">

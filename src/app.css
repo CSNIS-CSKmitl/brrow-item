@@ -336,7 +336,7 @@ button {
     font-size: 12px;
     font-weight: 500;
   }
-  label input,
+  label input:not([type="checkbox"]):not([type="radio"]),
   label textarea,
   label select {
     display: block;
