@@ -113,11 +113,34 @@ export function filterRequestsByTimeRange(
 }
 
 /**
+ * Check whether an approved loan request is still awaiting pickup scheduling/handover.
+ */
+export function isAwaitingPickup(request) {
+  if (!request || request.status !== "approved") return false;
+  const ps = String(request.pickup_status || "").trim();
+  return (
+    ps === "pending_user_select" ||
+    ps === "pending_caretaker_confirm" ||
+    ps === "confirmed" ||
+    ps === "reschedule_requested"
+  );
+}
+
+/**
+ * Check whether an approved loan request is actually picked up / currently borrowed out.
+ * Legacy approved records without pickup_status are treated as actively borrowed.
+ */
+export function isActivelyBorrowed(request) {
+  if (!request || request.status !== "approved") return false;
+  return !isAwaitingPickup(request);
+}
+
+/**
  * Check whether a loan request is currently overdue.
- * Only active/approved loans (not returned/rejected) past their dueDate are overdue.
+ * Only actively borrowed loans (not awaiting pickup, returned, or rejected) past their dueDate are overdue.
  */
 export function isRequestOverdue(request, now = new Date()) {
-  if (!request || request.status !== "approved") return false;
+  if (!isActivelyBorrowed(request)) return false;
   const due = parseDueDate(request.dueDate);
   if (!due) return false;
   const ref = parseValidDate(now) || new Date();
@@ -160,9 +183,11 @@ export function filterRequestsByDrilldown(
       return requests.filter((r) => r.status === "pending_caretaker");
     case "pending_teacher":
       return requests.filter((r) => r.status === "pending_teacher");
+    case "pending_pickup":
+      return requests.filter((r) => isAwaitingPickup(r));
     case "approved":
     case "active":
-      return requests.filter((r) => r.status === "approved");
+      return requests.filter((r) => isActivelyBorrowed(r));
     case "overdue":
       return requests.filter((r) => isRequestOverdue(r, now));
     case "returned":
@@ -353,7 +378,10 @@ export function computeAdminStats({
   ).length;
   const pending = pendingTeacher + pendingCaretaker;
 
-  const approvedList = filteredRequests.filter((r) => r?.status === "approved");
+  const approvedList = filteredRequests.filter((r) => isActivelyBorrowed(r));
+  const awaitingPickupCount = filteredRequests.filter((r) =>
+    isAwaitingPickup(r),
+  ).length;
   const activeLoans = approvedList.length;
   const activeBorrowedItemsCount = approvedList.reduce(
     (sum, r) =>

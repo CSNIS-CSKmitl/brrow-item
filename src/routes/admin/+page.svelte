@@ -15,6 +15,8 @@
     filterRequestsByTimeRange,
     filterRequestsByDrilldown,
     isRequestOverdue,
+    isAwaitingPickup,
+    isActivelyBorrowed,
   } from '../../lib/admin-stats.js';
   import { getAdminDashboardState, updateAdminDashboardState } from '../../lib/admin-dashboard-state.js';
 
@@ -107,7 +109,8 @@
   $: rangeRequests = filterRequestsByTimeRange(requests, selectedRange);
   $: pendingTeacherRequests = rangeRequests.filter((r) => r.status === 'pending_teacher');
   $: pendingRequests = rangeRequests.filter((r) => r.status === 'pending_caretaker');
-  $: approvedRequests = rangeRequests.filter((r) => r.status === 'approved');
+  $: pendingPickupRequests = rangeRequests.filter((r) => isAwaitingPickup(r));
+  $: approvedRequests = rangeRequests.filter((r) => isActivelyBorrowed(r));
   $: overdueRequestsList = rangeRequests.filter((r) => isRequestOverdue(r));
   $: returnedRequests = rangeRequests.filter((r) => r.status === 'returned');
   $: rejectedRequests = rangeRequests.filter((r) => r.status === 'rejected');
@@ -470,6 +473,17 @@
 
       <button
         type="button"
+        class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs sm:text-sm font-bold transition shadow-xs {requestFilter === 'pending_pickup' ? 'bg-indigo-600 text-white ring-2 ring-indigo-600/25' : 'bg-white border border-[#dce3dc] text-[#556157] hover:bg-[#f4f7f4]'}"
+        on:click={() => (requestFilter = 'pending_pickup')}
+      >
+        <span>รอนัดรับ / รอรับของ</span>
+        <span class="rounded-full px-2 py-0.5 text-xs font-bold {requestFilter === 'pending_pickup' ? 'bg-white/25 text-white' : 'bg-indigo-50 text-indigo-700'}">
+          {pendingPickupRequests.length}
+        </span>
+      </button>
+
+      <button
+        type="button"
         class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs sm:text-sm font-bold transition shadow-xs {requestFilter === 'approved' ? 'bg-emerald-600 text-white ring-2 ring-emerald-600/25' : 'bg-white border border-[#dce3dc] text-[#556157] hover:bg-[#f4f7f4]'}"
         on:click={() => (requestFilter = 'approved')}
       >
@@ -541,8 +555,10 @@
               ? 'ขณะนี้ไม่มีคำขอที่รอผู้ดูแลตรวจสอบและอนุมัติ'
               : requestFilter === 'pending_teacher'
                 ? 'ขณะนี้ไม่มีคำขอที่รออาจารย์รับทราบ'
-                : requestFilter === 'approved'
-                  ? 'ไม่มีรายการที่อยู่ระหว่างการยืมในขณะนี้'
+                : requestFilter === 'pending_pickup'
+                  ? 'ขณะนี้ไม่มีคำขอที่รอนัดรับหรือรอรับอุปกรณ์'
+                  : requestFilter === 'approved'
+                    ? 'ไม่มีรายการที่อยู่ระหว่างการยืมในขณะนี้'
                   : requestFilter === 'overdue'
                     ? 'ไม่มีรายการที่เกินกำหนดคืน'
                     : requestFilter === 'returned'
@@ -683,7 +699,7 @@
                   <Check size={15} /> อนุมัติ
                 </Button>
               </div>
-            {:else if request.status === 'approved'}
+            {:else if isActivelyBorrowed(request)}
               <div class="flex flex-wrap gap-2 self-start">
                 <Button
                   variant="outline"

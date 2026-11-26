@@ -9,6 +9,7 @@
   import { getLoanRequests, updateLoanStatus, updateLoanQuantities, markLoanReturned, isAdmin, pb } from '../../lib/pocketbase.js';
   import { exportRequestsToCSV, exportSingleRequestToCSV, formatDateTime } from '../../lib/csv.js';
   import { getStatusBadgeClass, getStatusDotClass } from '../../lib/status.js';
+  import { isActivelyBorrowed } from '../../lib/admin-stats.js';
 
   const labels = {
     pending_teacher: 'รอ อจ. รับทราบ',
@@ -468,7 +469,7 @@
                 <Check size={15} /> อนุมัติ
               </Button>
             </div>
-          {:else if ($user?.isAdmin || isAdmin($user)) && request.status === 'approved'}
+          {:else if ($user?.isAdmin || isAdmin($user)) && isActivelyBorrowed(request)}
             <div class="flex flex-wrap gap-2 self-start">
               <Button
                 variant="outline"
