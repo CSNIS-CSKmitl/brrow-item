@@ -198,6 +198,25 @@ export async function getItems() {
     .getFullList({ sort: "-created", requestKey: null });
 }
 
+export function normalizeDateTimeForPocketBase(value) {
+  if (!value) return "";
+  const raw = String(value).trim();
+  if (!raw) return "";
+  if (/(Z|[+-]\d{2}:\d{2})$/i.test(raw)) {
+    const dt = new Date(raw.replace(" ", "T"));
+    return Number.isNaN(dt.getTime()) ? raw : dt.toISOString();
+  }
+  if (/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2})?$/.test(raw)) {
+    const normalized = raw.replace(" ", "T");
+    const withSeconds =
+      normalized.length === 16 ? `${normalized}:00` : normalized;
+    const dt = new Date(withSeconds);
+    return Number.isNaN(dt.getTime()) ? raw : dt.toISOString();
+  }
+  const dt = new Date(raw);
+  return Number.isNaN(dt.getTime()) ? raw : dt.toISOString();
+}
+
 export async function createLoanRequest({
   itemIds,
   items,
@@ -226,7 +245,7 @@ export async function createLoanRequest({
       Object.fromEntries((items || itemIds || []).map((id) => [id, 1])),
     borrowerName: currentUser?.name || borrowerName || currentUser?.email,
     email: currentUser?.email || email,
-    dueDate,
+    dueDate: normalizeDateTimeForPocketBase(dueDate),
     note,
     requester: currentUser?.id,
     // ถ้า role เป็น อาจารย์/บุคลากร/head/admin ไม่ต้องเลือกอาจารย์ผู้รับทราบ ให้ส่งตรงไปรอ caretaker (superadmin) อนุมัติ
@@ -494,7 +513,12 @@ export async function updateMyLoanRequest(
     .collection("loan_requests")
     .update(
       id,
-      { dueDate, note, teacher, quantities },
+      {
+        dueDate: normalizeDateTimeForPocketBase(dueDate),
+        note,
+        teacher,
+        quantities,
+      },
       { expand: "requester,teacher,caretaker,items" },
     );
 }
