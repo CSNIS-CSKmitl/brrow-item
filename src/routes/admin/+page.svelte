@@ -258,6 +258,22 @@
   let saving = false;
   let deletingId = '';
   let itemFilter = 'all'; // 'all' | 'active' | 'archived'
+  let imagePreviewBroken = false;
+
+  function isValidImageUrl(value) {
+    const trimmed = String(value || '').trim();
+    if (!trimmed) return false;
+    try {
+      const parsed = new URL(trimmed);
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  }
+
+  $: if (form.image !== undefined) {
+    imagePreviewBroken = false;
+  }
 
   function openAddItemModal() {
     editingItemId = '';
@@ -299,13 +315,18 @@
       itemError = 'จำนวนพร้อมให้ยืมต้องอยู่ระหว่าง 0 ถึงจำนวนทั้งหมด';
       return;
     }
+    const imageUrl = form.image?.trim() || '';
+    if (imageUrl && !isValidImageUrl(imageUrl)) {
+      itemError = 'URL รูปภาพไม่ถูกต้อง (ต้องขึ้นต้นด้วย http:// หรือ https:// หรือเว้นว่างไว้)';
+      return;
+    }
     saving = true;
     try {
       const data = {
         name: form.name?.trim() || '',
         category: form.category?.trim() || 'อุปกรณ์ไอที',
         description: form.description?.trim() || '',
-        image: form.image?.trim() || '',
+        image: imageUrl,
         total,
         available,
         location: form.location?.trim() || '',
@@ -1073,8 +1094,15 @@
         <!-- Live Image Preview + URL -->
         <div class="flex items-center gap-4 rounded-xl border border-[#e7ebe6] bg-[#fafbf9] p-3">
           <div class="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-[#e2e7e2] bg-white p-1">
-            {#if form.image}
-              <img src={form.image} alt="ตัวอย่างรูปภาพ" loading="lazy" decoding="async" class="h-full w-full object-contain" />
+            {#if isValidImageUrl(form.image) && !imagePreviewBroken}
+              <img
+                src={form.image.trim()}
+                alt="ตัวอย่างรูปภาพ"
+                loading="lazy"
+                decoding="async"
+                class="h-full w-full object-contain"
+                on:error={() => (imagePreviewBroken = true)}
+              />
             {:else}
               <div class="grid h-full w-full place-items-center text-[#9fa9a0]">
                 <Package size={22} />

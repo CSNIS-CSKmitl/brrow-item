@@ -428,12 +428,7 @@ export async function updateLoanStatus(id, status, comment = "") {
             0,
             (Number(item.available) || 0) - quantity,
           );
-          await pb
-            .collection("items")
-            .update(itemId, {
-              available: nextAvail,
-              updated_by: user || undefined,
-            });
+          await updateItem(itemId, { available: nextAvail });
         } catch {}
       }
     } else if (status === "returned" && previousRecord.status !== "returned") {
@@ -448,12 +443,7 @@ export async function updateLoanStatus(id, status, comment = "") {
             Number(item.total) || 1,
             (Number(item.available) || 0) + quantity,
           );
-          await pb
-            .collection("items")
-            .update(itemId, {
-              available: nextAvail,
-              updated_by: user || undefined,
-            });
+          await updateItem(itemId, { available: nextAvail });
         } catch {}
       }
     }
@@ -641,30 +631,43 @@ export async function updateLoanQuantities(id, quantities) {
   return updated;
 }
 
+async function adminItemsRequest(url, method, body) {
+  const headers = {};
+  if (body !== undefined) headers["Content-Type"] = "application/json";
+  if (pb.authStore.token) {
+    headers["Authorization"] = `Bearer ${pb.authStore.token}`;
+  }
+  const res = await fetch(url, {
+    method,
+    credentials: "same-origin",
+    headers,
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  const payload = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(payload?.message || `HTTP ${res.status}`);
+    err.status = res.status;
+    err.response = payload;
+    throw err;
+  }
+  return payload;
+}
+
 export async function createItem(data) {
-  const user = pb.authStore.record?.id;
-  return pb.collection("items").create({
+  return adminItemsRequest("/api/admin/items", "POST", {
     is_active: true,
     ...data,
-    created_by: user || undefined,
-    updated_by: user || undefined,
   });
 }
 
 export async function updateItem(id, data) {
-  const user = pb.authStore.record?.id;
-  return pb
-    .collection("items")
-    .update(id, { ...data, updated_by: user || undefined });
+  return adminItemsRequest(`/api/admin/items/${encodeURIComponent(id)}`, "PATCH", data);
 }
 
 export async function deleteItem(id) {
-  return pb.collection("items").delete(id);
+  return adminItemsRequest(`/api/admin/items/${encodeURIComponent(id)}`, "DELETE");
 }
 
 export async function archiveItem(id, is_active = false) {
-  const user = pb.authStore.record?.id;
-  return pb
-    .collection("items")
-    .update(id, { is_active, updated_by: user || undefined });
+  return updateItem(id, { is_active });
 }
